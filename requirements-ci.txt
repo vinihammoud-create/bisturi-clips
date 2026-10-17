@@ -6,7 +6,9 @@ numpy>=2.0
 opencv-python-headless>=4.10
 rapidocr-onnxruntime>=1.4
 pandas>=2.0               # tabelas falsas nos testes da demo (tests/test_demo.py)
+av>=12                    # PyAV: quadros-chave da varredura (cs2clip/scan.py)
 fastapi==0.128.2           # interface (ui/): testes com TestClient
+uvicorn==0.48.0            # ui/__main__.py importa no topo
 python-multipart==0.0.29
 httpx==0.28.1
 pytest>=8.0
