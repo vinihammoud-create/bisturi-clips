@@ -1,0 +1,7 @@
+numpy>=2.0
+opencv-python-headless>=4.10
+faster-whisper>=1.1
+nvidia-cublas-cu12
+nvidia-cudnn-cu12>=9,<10
+rapidocr-onnxruntime>=1.4   # OCR do banner de fim de round (cs2clip/roundend.py), CPU, sem GPU
+demoparser2==0.42.0       # leitura de demos .dem (cs2clip/demo.py), MIT

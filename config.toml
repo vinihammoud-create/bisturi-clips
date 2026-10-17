@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────────────
+#  Bisturi Clips — configuração
+#  Apague (ou comente com #) qualquer linha para voltar ao valor padrão.
+#  Depois de mudar algo, rode de novo: a análise fica em cache, então só
+#  a parte de cortes/render é refeita (use --refazer para analisar do zero).
+# ─────────────────────────────────────────────────────────────────────
+
+[deteccao]
+modo = "rapido"           # "rapido" (lê keyframes e refina só onde há abate) ou "completo"
+fps_analise = 10          # leituras do kill feed por segundo (10 = precisão de 0,1 s)
+processos = 6             # partes do vídeo analisadas em paralelo
+
+[cortes]
+antes = 4.0               # segundos antes do 1º abate da jogada
+depois = 2.5              # segundos depois do último abate
+juntar_intervalo = 8.0    # abates mais próximos que isso viram UMA jogada (double, triple...)
+juntar_no_round = 120     # TODOS os abates do mesmo round viram UM vídeo (0 = desliga e volta a separar)
+pular_parado = 6.0        # nesse vídeo, tempo parado maior que isso entre abates é cortado (fade curto)
+sequencia_max = 90        # duração máxima do vídeo de um round, já sem o tempo parado (s)
+duracao_minima = 7.0
+estender_reacao = true    # segue gravando enquanto o streamer ainda reage (até +4 s)
+reacoes_sem_abate = 8     # momentos sem abate (grito/chat) por vídeo
+so_partidas = true         # cortes, montagem e shorts só de partidas competitivas (sem Deathmatch/aquecimento)
+limiar_reacao = 0.6       # 0 = fala normal ... 1 = grito
+nota_montagem = 20        # nota mínima (0-99) para a MONTAGEM (double kill ~18-26; reação só com emoção)
+nota_short = 30           # nota mínima (0-99) para virar SHORT vertical (os de maior nota primeiro)
+
+[shorts]
+gerar = true
+quantidade = 8            # por vídeo (as de maior nota)
+duracao_maxima = 60       # jogada maior que isso vira short COMPACTO (menos tempo em volta de cada abate)
+antes = 2.0               # no short compacto: segundos antes de cada abate
+depois = 1.5              # no short compacto: segundos depois de cada abate
+largura = 1080
+altura = 1920
+camera_altura = 608       # altura do painel da webcam (topo); o resto é gameplay
+marca = ""       # seu @ na faixa do topo do short, ex.: "@seucanal" (vazio ou sem a linha = sem texto)
+zoom_camera = 5.0         # largura do recorte da câmera, em "larguras de rosto"
+zoom_gameplay = 1.25      # >1 aproxima o gameplay e esconde o HUD das bordas
+legendas = true           # legenda animada palavra por palavra
+selo_jogada = true        # "DOUBLE KILL", "ACE"... no instante do abate
+zoom_no_abate = true      # "soco" de zoom em cada abate
+# camera_manual = [0.02, 0.32, 0.22, 0.25]   # força a posição da webcam (x, y, largura, altura em 0–1)
+
+[montagem]
+gerar = true
+ordem = "cronologica"     # "cronologica" ou "melhores"
+transicao = 0.12          # fade curto entre jogadas (s)
+
+[transcricao]
+modelo = "large-v3-turbo" # Whisper (GPU). Mais leve: "medium" ou "small"
+idioma = "pt"
+
+[chat]
+usar = true               # baixa o chat da Twitch do VOD (ID no nome do arquivo)
+atraso = 6.0              # usado se não der para calibrar pelo próprio vídeo
+
+[qualidade]
+encoder = "auto"          # auto | h264_nvenc | hevc_nvenc | libx264
+cq = 21                   # menor = mais qualidade e arquivo maior (19–23)
+lufs = -14.0              # volume padrão de YouTube/TikTok/Instagram
+renders_paralelos = 3
+
+[demo]
+jogador = ""             # seu nome no jogo (ou parte dele). Ex.: "Dollar". Vazio = o programa lista os jogadores

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ui-token" content="__UI_TOKEN__">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0f14">
+  <title>Bisturi Clips</title>
+  <link rel="icon" type="image/png" href="/static/emblema.png">
+  <link rel="icon" type="image/x-icon" href="/static/icone.ico" sizes="any">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body data-tela="inicio">
+  <header class="topbar">
+    <a class="brand" href="#inicio" aria-label="Bisturi Clips — Início">
+      <img class="brand-mark" src="/static/emblema.png" alt="" width="40" height="40">
+      <span class="brand-name"><b>BISTURI</b> CLIPS</span>
+    </a>
+    <nav class="nav-list" aria-label="Navegação principal">
+      <button class="nav-item active" id="nav-inicio" data-view="inicio" type="button"><i class="i i-home" aria-hidden="true"></i><span>Início</span></button>
+      <button class="nav-item" id="nav-videos" data-view="videos" type="button"><i class="i i-grid" aria-hidden="true"></i><span>Biblioteca</span></button>
+      <button class="nav-item" id="nav-configurar" data-view="configurar" type="button"><i class="i i-gear" aria-hidden="true"></i><span>Configurar</span></button>
+      <button class="nav-item" id="nav-ajuda" data-view="ajuda" type="button"><i class="i i-help" aria-hidden="true"></i><span>Ajuda</span></button>
+    </nav>
+    <div class="topbar-side">
+      <span class="stat-chip" title="Tudo roda neste computador"><span class="stat-dot" aria-hidden="true"></span><span id="status-chip">PRONTO</span></span>
+      <button class="icon-button" id="refresh-button" type="button" aria-label="Atualizar" title="Atualizar"><i class="i i-refresh" aria-hidden="true"></i></button>
+    </div>
+  </header>
+
+  <main class="main-area">
+    <!-- INÍCIO: os 3 passos -->
+    <section class="view active" id="view-inicio" aria-label="Início">
+      <div class="hero">
+        <img class="hero-logo" src="/static/logo.png" alt="Bisturi Clips — AI clips &amp; moments" width="640" height="457">
+        <p class="hero-lead">Suas lives e demos de CS2 viram <strong>cortes</strong>, <strong>shorts</strong> e <strong>montagem</strong>. Sozinho.</p>
+      </div>
+
+      <div class="steps-grid">
+        <!-- Passo 1 -->
+        <section class="step-card step-1 is-active" id="step-1" aria-labelledby="step-1-title">
+          <header class="step-head"><span class="step-num">1</span><div><h2 id="step-1-title">Escolha o vídeo ou a demo</h2><p>Live, gravação ou arquivo .dem do CS2.</p></div></header>
+          <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Solte aqui seu vídeo ou demo; pressione Enter para escolher arquivos">
+            <span class="drop-icon" aria-hidden="true"><i class="i i-upload"></i></span>
+            <strong class="drop-title">Arraste o arquivo para cá</strong>
+            <span class="drop-or">ou</span>
+            <button class="button button-primary" id="choose-files" type="button"><i class="i i-folder" aria-hidden="true"></i> Escolher no computador</button>
+            <small class="drop-hint">Arrastar faz uma cópia do arquivo. Para lives grandes, use "Escolher no computador" (sem cópia).</small>
+          </div>
+          <div class="upload-status hidden" id="upload-status" aria-live="polite">
+            <div class="upload-status-head"><span id="upload-status-text">Enviando arquivos…</span><strong id="upload-percent">0%</strong></div>
+            <div class="progress-track"><div class="progress-fill" id="upload-progress"></div></div>
+          </div>
+          <div class="selected-files hidden" id="selected-files-wrap">
+            <div class="mini-heading"><span id="selected-count">0 arquivos</span><button class="text-button" id="clear-files" type="button">Limpar</button></div>
+            <div id="selected-files" class="file-list"></div>
+          </div>
+          <button class="text-button step-foot" id="show-input-folder" type="button"><i class="i i-folder" aria-hidden="true"></i> Usar arquivos da pasta entrada</button>
+        </section>
+
+        <!-- Passo 2 -->
+        <section class="step-card step-2" id="step-2" aria-labelledby="step-2-title">
+          <header class="step-head"><span class="step-num">2</span><div><h2 id="step-2-title">Processe</h2><p>Escolha o que gerar e clique no botão.</p></div></header>
+          <div class="option-list">
+            <label class="option-row"><span class="option-copy"><strong>Cortes e shorts</strong><small>Desligue para só analisar.</small></span><input id="opt-cuts" class="switch" type="checkbox" checked></label>
+            <label class="option-row" id="opt-shorts-wrap"><span class="option-copy"><strong>Shorts verticais</strong><small>Prontos para postar.</small></span><input id="opt-shorts" class="switch" type="checkbox" checked></label>
+            <label class="option-row" id="opt-montage-wrap"><span class="option-copy"><strong>Montagem</strong><small>Um vídeo com as melhores jogadas.</small></span><input id="opt-montage" class="switch" type="checkbox" checked></label>
+            <label class="option-row option-warn" id="opt-force-wrap"><span class="option-copy"><strong>Processar mesmo com o jogo aberto</strong><small>Com o CS2 ou o OBS abertos, o programa faz só uma prévia para não atrapalhar. Marque só se tiver certeza.</small></span><input id="opt-force" class="switch" type="checkbox"></label>
+          </div>
+          <label class="field-label player-field hidden" id="player-field">Meu nome no jogo <span class="muted">(para demos)</span><input id="player-name" type="text" maxlength="60" autocomplete="off" placeholder="Ex.: seu nick"><small>Use seu nome ou parte dele como aparece na partida.</small></label>
+          <button class="button button-primary button-large" id="process-button" type="button" disabled><i class="i i-bolt" aria-hidden="true"></i> Processar</button>
+          <p class="step-note" id="process-hint">Escolha um arquivo no passo 1.</p>
+        </section>
+
+        <!-- Passo 3 -->
+        <section class="step-card step-3" id="step-3" aria-labelledby="step-3-title">
+          <header class="step-head"><span class="step-num">3</span><div><h2 id="step-3-title">Veja, revise e poste</h2><p>Os resultados ficam na Biblioteca.</p></div></header>
+          <div id="recent-grid" class="recent-list"><div class="empty-state small-empty"><i class="i i-film empty-symbol" aria-hidden="true"></i><strong>Nada pronto ainda</strong><p>Seus vídeos aparecem aqui quando terminarem.</p></div></div>
+          <button class="button button-secondary step-foot-button" id="go-library" type="button"><i class="i i-grid" aria-hidden="true"></i> Abrir a Biblioteca</button>
+        </section>
+      </div>
+
+      <section class="panel queue-panel" aria-labelledby="queue-title">
+        <div class="section-heading"><div><h2 id="queue-title">Andamento</h2><p>Um arquivo por vez, para não pesar na placa de vídeo.</p></div><button class="button button-danger-quiet" id="cancel-all" type="button">Cancelar tudo</button></div>
+        <div class="notice notice-info hidden" id="preview-notice" role="status">O CS2 ou o OBS estava aberto, então foi feita só a prévia: sem cortes e sem transcrição nova. Feche o jogo e processe de novo para gerar os cortes.</div>
+        <div class="progress-area hidden" id="progress-area">
+          <div class="progress-title-row"><div class="progress-title"><span class="overline">AGORA</span><h3 id="progress-video">Aguardando…</h3></div><span class="status-label" id="progress-state">NA FILA</span></div>
+          <div class="progress-label-row"><span id="progress-stage">Preparando</span><strong id="progress-count">0 de 0</strong></div>
+          <div class="progress-track progress-track-big"><div class="progress-fill" id="video-progress"></div></div>
+          <div class="progress-label-row secondary-progress-label"><span>Fila toda</span><strong id="overall-count">0%</strong></div>
+          <div class="progress-track progress-track-small"><div class="progress-fill progress-fill-cyan" id="overall-progress"></div></div>
+          <div class="elapsed-row"><span id="elapsed-time">Tempo decorrido: 00:00</span><button class="text-button" id="toggle-details" type="button" aria-expanded="false">Mostrar detalhes ＋</button></div>
+          <div class="details-panel hidden" id="details-panel"><pre id="details-text">Aguardando detalhes do programa…</pre></div>
+        </div>
+        <div id="queue-list" class="queue-list"><div class="empty-state small-empty"><strong>Nenhum arquivo na fila</strong><p>Adicione um vídeo ou uma demo no passo 1.</p></div></div>
+      </section>
+    </section>
+
+    <!-- BIBLIOTECA E RESULTADO -->
+    <section class="view" id="view-videos" aria-label="Biblioteca de vídeos">
+      <div id="library-wrap">
+        <div class="page-heading"><div><h1>Biblioteca</h1><p id="library-count">Abra um vídeo para ver, revisar e postar os cortes.</p></div><button class="button button-secondary" id="open-output-folder" type="button"><i class="i i-folder" aria-hidden="true"></i> Abrir pasta saída</button></div>
+        <div id="library-grid" class="library-grid"><div class="empty-state"><strong>Carregando biblioteca…</strong><p>Os vídeos analisados vão aparecer aqui.</p></div></div>
+      </div>
+      <div id="result-view" class="result-view hidden">
+        <button class="text-button back-button" id="back-library" type="button"><i class="i i-back" aria-hidden="true"></i> Biblioteca</button>
+        <div class="result-header panel">
+          <div class="result-title-line">
+            <div class="result-title-block"><p class="overline">RESULTADO</p><h1 id="result-title">VÍDEO</h1><p id="result-subtitle" class="result-subtitle"></p></div>
+            <div class="result-actions" id="result-actions"></div>
+          </div>
+        </div>
+        <div id="demo-notice" class="notice notice-info hidden"></div>
+        <div id="demo-summary" class="demo-summary hidden"></div>
+        <section id="post-panel" class="panel post-panel hidden" aria-labelledby="post-title">
+          <div class="section-heading"><div><h2 id="post-title">Pronto para postar</h2><p>Os melhores shorts, com título e descrição. Veja, copie e poste.</p></div></div>
+          <div id="post-list" class="post-list"></div>
+        </section>
+        <div id="timeline-wrap" class="panel timeline-wrap"><div class="section-heading compact-heading"><div><h3>Linha do tempo</h3><p class="muted">Clique em um marcador para ir até a jogada.</p></div><div class="timeline-legend"><span><i class="legend-dot amber"></i>Jogadas</span><span><i class="legend-dot violet"></i>Reações</span><span><i class="legend-dot match"></i>Partida</span></div></div><div id="timeline" class="timeline"></div></div>
+        <div class="section-heading moments-heading"><div><h2>Momentos</h2><p class="muted" id="moment-count">0 momentos</p></div></div>
+        <div class="filter-bar">
+          <label>Tipo<select id="filter-type"><option value="todos">Tudo</option><option value="abate">Jogadas</option><option value="reacao">Reações</option><option value="fail">Fails</option></select></label>
+          <label>Emoção<select id="filter-emotion"><option value="todas">Todas</option><option value="HYPE">Hype</option><option value="RAIVA">Raiva</option><option value="RISADA">Risada</option><option value="nenhuma">Sem emoção identificada</option></select></label>
+          <label>Ordem<select id="filter-order"><option value="nota">Melhores notas</option><option value="tempo">Ordem do vídeo</option></select></label>
+          <label class="filter-check"><input type="checkbox" id="filter-competitive" checked> Só partidas <small class="muted hidden" id="filter-competitive-note">(nenhuma partida neste vídeo: mostrando tudo)</small></label>
+          <label class="filter-check"><input type="checkbox" id="filter-approved"> Só gostei</label>
+          <label class="filter-check"><input type="checkbox" id="filter-excluded"> Mostrar descartados</label>
+        </div>
+        <div id="dirty-banner" class="dirty-banner hidden"><span id="dirty-message">Você mudou momentos.</span><button class="button button-primary" id="apply-changes" type="button">Aplicar e gerar de novo</button></div>
+        <div id="moments-grid" class="moments-grid"><div class="empty-state"><strong>Nenhum momento para mostrar</strong><p>Tente mudar os filtros.</p></div></div>
+      </div>
+    </section>
+
+    <!-- CONFIGURAR -->
+    <section class="view" id="view-configurar" aria-label="Configurar o programa">
+      <div class="page-heading"><div><h1>Configurar</h1><p>Só as opções seguras. As mudanças valem na próxima vez que processar.</p></div><div class="config-actions"><button class="button button-secondary" id="reset-config" type="button">Voltar aos padrões</button><button class="button button-primary" id="save-config" type="button"><i class="i i-check" aria-hidden="true"></i> Salvar</button></div></div>
+      <div id="config-message" class="notice hidden" role="status"></div>
+      <div id="config-groups" class="config-groups"><div class="empty-state"><strong>Carregando opções…</strong><p>As configurações vêm do programa.</p></div></div>
+    </section>
+
+    <!-- AJUDA -->
+    <section class="view" id="view-ajuda" aria-label="Ajuda">
+      <div class="page-heading"><div><h1>Ajuda</h1><p>Do arquivo ao short, sem abrir o terminal.</p></div></div>
+      <div class="help-grid">
+        <article class="help-card"><span class="help-number">1</span><h3>Escolha o arquivo</h3><p>Arraste um vídeo ou demo para o passo 1, ou clique em Escolher no computador. Pode escolher vários.</p></article>
+        <article class="help-card"><span class="help-number">2</span><h3>Processe</h3><p>Marque o que quer gerar e clique em Processar. O andamento aparece logo abaixo. Dá para cancelar.</p></article>
+        <article class="help-card"><span class="help-number">3</span><h3>Veja, revise e poste</h3><p>Na Biblioteca, abra o vídeo. Assista aos cortes, marque Gostei ou Descarte, copie título e descrição dos shorts.</p></article>
+        <article class="help-card"><span class="help-number">!</span><h3>Se algo der errado</h3><p>Abra Mostrar detalhes no Andamento. O registro completo fica em saida/log.txt.</p></article>
+      </div>
+      <div class="help-columns">
+        <section class="panel help-paths"><div><h3>Onde ficam os arquivos?</h3><p><strong>entrada/</strong> guarda o que você arrastou. <strong>saida/</strong> guarda os cortes, os shorts, a montagem e os relatórios.</p><p class="muted">Tudo roda neste computador. Nenhum vídeo é enviado para a internet.</p></div><button class="button button-secondary" id="help-open-output" type="button"><i class="i i-folder" aria-hidden="true"></i> Abrir pasta saída</button></section>
+        <section class="panel help-paths"><div><h3>Está tudo funcionando?</h3><p>Confere o FFmpeg, a placa de vídeo, o espaço em disco e se o jogo está aberto.</p></div><button class="button button-secondary" id="run-check" type="button"><i class="i i-check" aria-hidden="true"></i> Verificar meu computador</button><pre id="check-result" class="hidden"></pre></section>
+      </div>
+      <p class="help-keys muted">Atalhos na tela do vídeo: <kbd>J</kbd>/<kbd>K</kbd> próximo e anterior · <kbd>A</kbd> gostei · <kbd>D</kbd> descartar · <kbd>Espaço</kbd> tocar/pausar · <kbd>Esc</kbd> fechar o player.</p>
+    </section>
+
+    <footer class="site-footer">
+      <span><img src="/static/emblema.png" alt="" width="18" height="18"> Bisturi Clips · roda só neste computador</span>
+      <span>feito por Vinicius Hammoud · licença MIT</span>
+    </footer>
+  </main>
+
+  <!-- Player -->
+  <div class="modal-backdrop hidden" id="player-modal" role="dialog" aria-modal="true" aria-labelledby="player-title">
+    <div class="player-dialog">
+      <div class="player-head"><div><p class="overline">ASSISTINDO</p><h2 id="player-title">JOGADA</h2></div><button class="icon-button" id="close-player" type="button" aria-label="Fechar player"><i class="i i-x" aria-hidden="true"></i></button></div>
+      <div class="player-tabs" id="player-tabs"><button class="player-tab active" data-player-kind="corte" type="button">Corte</button><button class="player-tab hidden" data-player-kind="short" id="short-tab" type="button">Short vertical</button><button class="player-tab hidden" data-player-kind="efeitos" id="efeitos-tab" type="button">Short com efeitos</button></div>
+      <video id="moment-player" controls preload="none"></video>
+      <p class="muted" id="player-caption"></p>
+    </div>
+  </div>
+
+  <!-- Primeira abertura -->
+  <div class="modal-backdrop welcome-backdrop hidden" id="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <form class="welcome-dialog" id="welcome-form" novalidate>
+      <img class="welcome-logo" src="/static/logo.png" alt="Bisturi Clips" width="640" height="457">
+      <h2 id="welcome-title">Bem-vindo!</h2>
+      <p>O Bisturi Clips assiste às suas lives e demos de CS2, acha as melhores jogadas e reações e entrega cortes, shorts e uma montagem prontos para postar.</p>
+      <p class="muted">Tudo roda neste computador. Nenhum vídeo vai para a internet.</p>
+      <label class="field-label welcome-field" for="welcome-marca">Qual é o @ do seu canal?
+        <input id="welcome-marca" type="text" maxlength="40" autocomplete="off" placeholder="@seucanal">
+        <small>Aparece pequeno no topo dos shorts e nas hashtags. Pode deixar vazio. Dá para mudar depois em Configurar.</small>
+      </label>
+      <p class="welcome-error hidden" id="welcome-error" role="alert"></p>
+      <div class="welcome-actions">
+        <button class="text-button" id="welcome-skip" type="button">Pular</button>
+        <button class="button button-primary button-large" id="welcome-start" type="submit">Começar <i class="i i-arrow" aria-hidden="true"></i></button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

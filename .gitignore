@@ -1,0 +1,28 @@
+# Ambiente e cache
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Mídia e dados pessoais (nunca versionar)
+entrada/
+saida/
+saida*/
+dados/
+tools/gabarito_momentos.csv
+*.mp4
+*.mkv
+*.mov
+*.webm
+*.dem
+*.wav
+*.mp3
+
+# Binários de terceiros (TwitchDownloaderCLI.exe: baixar do GitHub oficial; as licenças ficam no git)
+bin/*.exe
+
+# Segredos
+.env
+*.secret.*
+client_secret*.json
+token*.json

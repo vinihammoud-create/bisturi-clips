@@ -1,0 +1,4 @@
+# Scripts do Windows precisam de CRLF (o cmd quebra com LF em goto/labels); garante isso em qualquer checkout
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

@@ -1,0 +1,28 @@
+name: Testes
+
+# Roda só a lógica pura e a detecção visual do banner de fim de round — tudo
+# em CPU, sem vídeos, sem Whisper e sem NVENC (isso continua manual, no
+# notebook com a RTX). Ver docs/engineering/TEST_STRATEGY.md.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar ffmpeg (cs2clip/tools.py precisa dele já no PATH, mesmo sem processar vídeo)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Instalar dependências (versão enxuta, sem GPU)
+        run: pip install -r requirements-ci.txt
+
+      - name: pytest
+        run: python -m pytest tests/ -v
