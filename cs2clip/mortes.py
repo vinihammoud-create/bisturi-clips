@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from .roundend import PAINEL_MORTE_REL, detect_own_death
-from .tools import FFMPEG
+from .tools import FFMPEG, gravar_atomico
 
 FPS = 2.0
 LARGURA = 563              # largura do recorte do painel num quadro 1280x720 (a que o OCR lê melhor)
@@ -119,6 +119,5 @@ def mortes_cached(cache: Path, video: str, info, processos: int, refazer: bool, 
         print(f"    [aviso] não consegui ler as mortes ({e}); seguindo sem elas")
         return []
     cache.mkdir(parents=True, exist_ok=True)
-    arq.write_text(json.dumps({"versao": VERSAO, "area": list(area) if area else None, "mortes": mortes}),
-                   encoding="utf-8")
+    gravar_atomico(arq, json.dumps({"versao": VERSAO, "area": list(area) if area else None, "mortes": mortes}))
     return mortes

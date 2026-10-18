@@ -215,7 +215,7 @@ def test_melhores_de_todos_usa_os_arquivos_exatos(tmp_path, monkeypatch):
     chamadas = []
     monkeypatch.setattr(pl, "analyze", analyze)
     monkeypatch.setattr(pl, "render_all", render_all)
-    monkeypatch.setattr(rd, "concat", lambda files, out: chamadas.append(list(files)))
+    monkeypatch.setattr(rd, "concat", lambda files, out, cfg=None: chamadas.append(list(files)))
     main([str(v1), str(v2), "--saida", str(tmp_path / "saida")])
     assert chamadas == [[exato["a"], exato["b"]]]            # na ordem das notas, nos arquivos exatos
 

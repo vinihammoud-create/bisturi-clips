@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 
 from .roundend import COR_MIN, _cor_banner, _tint_score, detect_round_end
-from .tools import FFMPEG
+from .tools import FFMPEG, gravar_atomico
 
 SCALE_W, SCALE_H = 960, 540  # mesma escala usada nos testes de roundend.py
 TINT_MIN = 0.08              # mesmo limiar de detect_round_end: abaixo disso nem tenta o OCR
@@ -89,12 +89,12 @@ def scan_rounds(path: str, ocr, every: float = 3.0, min_gap: float = 20.0,
 def scan_rounds_cached(path: str, cache: Path, ocr, every: float = 3.0, min_gap: float = 20.0,
                        refazer: bool = False, progress=None, area=None) -> list[RoundTimelineEntry]:
     """`scan_rounds`, mas guardando/lendo o resultado em `cache/rounds.json`. `area`: ver `scan_rounds`."""
-    f = cache / "rounds.json"
-    if f.exists() and not refazer:
-        return [RoundTimelineEntry(**d) for d in json.loads(f.read_text(encoding="utf-8"))]
+    if not refazer:
+        guardados = carregar_rounds(cache)
+        if guardados is not None:
+            return guardados
     entries = scan_rounds(path, ocr, every=every, min_gap=min_gap, progress=progress, area=area)
-    cache.mkdir(parents=True, exist_ok=True)
-    f.write_text(json.dumps([asdict(e) for e in entries]), encoding="utf-8")
+    salvar_rounds(cache, entries)
     return entries
 
 
@@ -157,11 +157,15 @@ class RoundCollector:
 
 def salvar_rounds(cache: Path, entries: list[RoundTimelineEntry]) -> None:
     cache.mkdir(parents=True, exist_ok=True)
-    (cache / "rounds.json").write_text(json.dumps([asdict(e) for e in entries]), encoding="utf-8")
+    gravar_atomico(cache / "rounds.json", json.dumps([asdict(e) for e in entries]))
 
 
 def carregar_rounds(cache: Path) -> list[RoundTimelineEntry] | None:
+    """None = sem rounds.json ou ilegível (gravação interrompida): quem chama varre de novo."""
     f = cache / "rounds.json"
     if not f.exists():
         return None
-    return [RoundTimelineEntry(**d) for d in json.loads(f.read_text(encoding="utf-8"))]
+    try:
+        return [RoundTimelineEntry(**d) for d in json.loads(f.read_text(encoding="utf-8"))]
+    except (OSError, ValueError, TypeError):
+        return None

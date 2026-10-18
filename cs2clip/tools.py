@@ -32,6 +32,18 @@ def __getattr__(nome: str) -> str:
     raise AttributeError(f"module {__name__!r} has no attribute {nome!r}")
 
 
+def gravar_atomico(arq: Path, dados: str | bytes) -> None:
+    """Grava em `<nome>.tmp` e só troca pelo nome final no fim: interrompido no meio (Cancelar da interface, queda
+    de energia), o arquivo fica inteiro (o antigo) ou não existe, nunca pela metade."""
+    arq = Path(arq)
+    tmp = arq.with_name(arq.name + ".tmp")
+    if isinstance(dados, str):
+        tmp.write_text(dados, encoding="utf-8")
+    else:
+        tmp.write_bytes(dados)
+    os.replace(tmp, arq)
+
+
 # O OpenCV no Windows não abre caminhos com acento (ex.: "edição"): lê/grava via memória.
 def imread(path, flags: int = 1):
     import cv2

@@ -4,7 +4,8 @@
     --refazer falas           só a transcrição (Whisper)
     --refazer kills,voz       kill feed + voz
 
-Etapas: kills (kill feed), rounds (banner de fim de round), voz, falas, chat, webcam, cortes.
+Etapas: kills (kill feed), rounds (banner de fim de round), mortes (painel "matou você"), voz, falas, chat,
+webcam, cortes.
 `kills` e `rounds` saem da MESMA passada de quadros-chave: pedir uma das duas refaz a varredura.
 """
 from __future__ import annotations
@@ -15,7 +16,9 @@ import threading
 from dataclasses import asdict
 from pathlib import Path
 
-ETAPAS = ("kills", "rounds", "mortes", "voz", "falas", "chat", "webcam", "cortes")
+from .tools import gravar_atomico
+
+ETAPAS =("kills", "rounds", "mortes", "voz", "falas", "chat", "webcam", "cortes")
 
 
 def parse_refazer(valor: str | bool | frozenset[str] | set[str] | None) -> frozenset[str]:
@@ -109,4 +112,4 @@ class CacheRender:
     def salvar(self) -> None:
         self.arq.parent.mkdir(parents=True, exist_ok=True)
         with self._lock:
-            self.arq.write_text(json.dumps(self.meta, ensure_ascii=False), encoding="utf-8")
+            gravar_atomico(self.arq, json.dumps(self.meta, ensure_ascii=False))

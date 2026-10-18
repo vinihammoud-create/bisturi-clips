@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+config.toml.bak
 
 # Mídia e dados pessoais (nunca versionar)
 entrada/

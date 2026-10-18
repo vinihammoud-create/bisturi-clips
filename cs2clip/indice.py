@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 from collections import Counter
 from pathlib import Path
 
 from .moments import Moment
 from .partes import Parte
+from .tools import gravar_atomico
 
 
 def _mmss(t: float) -> str:
@@ -24,6 +26,21 @@ def ler_indice(out_root: Path) -> list[dict]:
     return dados if isinstance(dados, list) else []
 
 
+def _guardar_se_ilegivel(arq: Path) -> None:
+    """indice.json ilegível NÃO é regravado por cima (isso apagaria a biblioteca inteira): fica guardado como
+    `indice.json.corrompido` para dar para recuperar, e a biblioteca recomeça."""
+    try:
+        if isinstance(json.loads(arq.read_text(encoding="utf-8")), list):
+            return
+    except FileNotFoundError:
+        return
+    except (OSError, ValueError):
+        pass
+    copia = arq.with_name(arq.name + ".corrompido")
+    os.replace(arq, copia)
+    print(f"    [aviso] {arq.name} estava ilegível: guardado em {copia.name} e a biblioteca recomeça deste vídeo")
+
+
 def atualizar_indice(out_root: Path, video_id: str, arquivo: str, duracao: float, moments: list[Moment],
                      partes: list[Parte], processado_em: str, caminho: str = "") -> list[dict]:
     linha = {
@@ -33,11 +50,12 @@ def atualizar_indice(out_root: Path, video_id: str, arquivo: str, duracao: float
         "partidas": [{"titulo": p.titulo, "placar": p.placar, "rounds": len(p.rounds),
                       "inicio": round(p.inicio, 1), "fim": round(p.fim, 1)} for p in partes if p.tipo == "partida"],
     }
+    _guardar_se_ilegivel(out_root / "indice.json")
     indice = [x for x in ler_indice(out_root) if x.get("id") != video_id] + [linha]
     indice.sort(key=lambda x: x.get("processado_em", ""), reverse=True)
     out_root.mkdir(parents=True, exist_ok=True)
-    (out_root / "indice.json").write_text(json.dumps(indice, ensure_ascii=False, indent=1), encoding="utf-8")
-    (out_root / "indice.txt").write_text(texto_indice(indice), encoding="utf-8")
+    gravar_atomico(out_root / "indice.json", json.dumps(indice, ensure_ascii=False, indent=1))
+    gravar_atomico(out_root / "indice.txt", texto_indice(indice))
     return indice
 
 

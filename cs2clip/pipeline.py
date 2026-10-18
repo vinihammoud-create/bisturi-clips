@@ -4,6 +4,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import hashlib
+import io
 import json
 import os
 import re
@@ -44,7 +45,7 @@ from .report import entry
 from .revisao import gerar_revisao, itens_revisao
 from .rounds import RoundCollector, carregar_rounds, criar_ocr, salvar_rounds, scan_rounds
 from .scan import probe, scan_video, scan_video_fast
-from .tools import imread, imwrite
+from .tools import gravar_atomico, imread, imwrite
 from .transcribe import Word, hype_curve, hype_terms, transcribe_full, liberar_modelo
 
 
@@ -103,9 +104,15 @@ def _scan_cached(info, cache: Path, cfg: Config, refazer: bool, area=None) -> li
     crops = cache / "caixas"
     versao = cache / "detector.versao"
     if raw.exists() and not refazer:
-        if versao.exists() and _versao_vale(versao.read_text(encoding="utf-8").strip(), area):
-            return json.loads(raw.read_text(encoding="utf-8"))
-        print("    cache do kill feed de uma versão antiga do detector — varrendo de novo")
+        caixas = _ler_cache(lambda: json.loads(raw.read_text(encoding="utf-8")))
+        gravada = _ler_cache(lambda: versao.read_text(encoding="utf-8").strip()) if versao.exists() else None
+        rounds_ok = not (cache / "rounds.json").exists() or carregar_rounds(cache) is not None
+        if caixas is None or not rounds_ok:
+            print("    cache do kill feed ilegível (gravação interrompida?) — varrendo de novo")
+        elif gravada is not None and _versao_vale(gravada, area):
+            return caixas
+        else:
+            print("    cache do kill feed de uma versão antiga do detector — varrendo de novo")
     crops.mkdir(parents=True, exist_ok=True)
     done = [0.0]
     lock = threading.Lock()
@@ -140,9 +147,24 @@ def _scan_cached(info, cache: Path, cfg: Config, refazer: bool, area=None) -> li
         imwrite(f, tr.best_crop)
         out.append({"t": round(tr.first, 2), "fim": round(tr.last, 2), "hits": tr.hits, "box": list(tr.box),
                     "crop": f.name})
-    raw.write_text(json.dumps(out, indent=1), encoding="utf-8")
-    versao.write_text(_versao_cache(area), encoding="utf-8")
+    gravar_atomico(raw, json.dumps(out, indent=1))
+    gravar_atomico(versao, _versao_cache(area))
     return out
+
+
+def _ler_cache(ler):
+    """Lê um arquivo do .cache. Ilegível (gravação interrompida por Cancelar ou queda de energia, de antes da
+    gravação atômica) = como se não existisse: a etapa é refeita em vez de derrubar a análise em toda execução."""
+    try:
+        return ler()
+    except (OSError, ValueError, KeyError, TypeError, EOFError):
+        return None
+
+
+def _npy(arr) -> bytes:
+    buf = io.BytesIO()
+    np.save(buf, arr)
+    return buf.getvalue()
 
 
 def _atomico(destino: Path, fazer) -> None:
@@ -261,7 +283,7 @@ def _conferir_origem(cache: Path, origem: dict) -> None:
             raise RuntimeError(f"não consegui apagar o cache antigo em {cache}: feche o que estiver usando "
                                "essa pasta e rode de novo") from e
     cache.mkdir(parents=True, exist_ok=True)
-    (cache / "origem.json").write_text(json.dumps(origem), encoding="utf-8")
+    gravar_atomico(cache / "origem.json", json.dumps(origem))
 
 
 def _termos_nas_janelas(words: list[Word], m: Moment) -> list[str]:
@@ -341,36 +363,39 @@ def analyze(path: Path, cfg: Config, out_root: Path, player_dir: Path,
 
     st = Step("Analisando a voz do streamer (VAD + volume relativo)")
     vcache, scache = cache / "voz.npy", cache / "fala_trechos.json"
+    voz_cache = (_ler_cache(lambda: (np.load(vcache), json.loads(scache.read_text(encoding="utf-8"))))
+                 if tem_som and vcache.exists() and scache.exists() and "voz" not in R else None)
     if not tem_som:   # curva zerada do tamanho que voice_curve daria; nada vai para o cache
         segs, voice = [], np.zeros(int(info.duration / aud.HOP), np.float32)
         print("    vídeo sem som: só abates (sem voz, falas e risadas)")
-    elif vcache.exists() and scache.exists() and "voz" not in R:
-        voice = np.load(vcache)
-        segs = json.loads(scache.read_text())
+    elif voz_cache is not None:
+        voice, segs = voz_cache
     else:
         segs = aud.speech_segments(audio())
         voice = aud.voice_curve(audio(), segs)
-        np.save(vcache, voice)
-        scache.write_text(json.dumps(segs))
+        gravar_atomico(vcache, _npy(voice))
+        gravar_atomico(scache, json.dumps(segs))
     speech_pct = 100 * sum(e - s for s, e in segs) / max(1.0, info.duration)
     st.done(f"fala em {speech_pct:.0f}% do vídeo, {len(aud.find_peaks(voice, 0.6, 0.3, 20.0))} picos de grito")
 
     st = Step("Transcrevendo as falas (Whisper na GPU)")
     tcache, tmeta = cache / "falas.json", cache / "falas.meta.json"
     meta = {"modelo": cfg.transcricao.modelo, "idioma": cfg.transcricao.idioma}
-    meta_ok = tmeta.exists() and json.loads(tmeta.read_text(encoding="utf-8")) == meta
+    meta_ok = tmeta.exists() and _ler_cache(lambda: json.loads(tmeta.read_text(encoding="utf-8"))) == meta
+    falas_cache = (_ler_cache(lambda: [Word(**w) for w in json.loads(tcache.read_text(encoding="utf-8"))])
+                   if tem_som and tcache.exists() and meta_ok and "falas" not in R else None)
     if not tem_som:
         words = []   # sem Whisper: em silêncio ele inventa frases
-    elif tcache.exists() and meta_ok and "falas" not in R:
-        words = [Word(**w) for w in json.loads(tcache.read_text(encoding="utf-8"))]
+    elif falas_cache is not None:
+        words = falas_cache
     elif cfg.modo_previa:
         words = []   # trava de GPU: sem Whisper novo enquanto o jogo/OBS usam a placa
         print("    (prévia: sem transcrição guardada e a GPU está ocupada; falas e risadas ficam de fora)")
     else:
         words = transcribe_full(audio(), cfg.transcricao.modelo, cfg.transcricao.idioma)
         liberar_modelo()   # a memória de vídeo fica livre para o render
-        tcache.write_text(json.dumps([w.__dict__ for w in words], ensure_ascii=False), encoding="utf-8")
-        tmeta.write_text(json.dumps(meta), encoding="utf-8")
+        gravar_atomico(tcache, json.dumps([w.__dict__ for w in words], ensure_ascii=False))
+        gravar_atomico(tmeta, json.dumps(meta))
     talk = hype_curve(words, info.duration, aud.HOP)
     st.done("pulado (vídeo sem som)" if not tem_som
             else f"{len(words)} palavras" if words or not cfg.modo_previa else "pulado (prévia)")
@@ -433,15 +458,20 @@ def analyze(path: Path, cfg: Config, out_root: Path, player_dir: Path,
     if cfg.shorts.gerar:
         st = Step("Detectando a webcam (layout vertical)")
         lc = cache / "layout.json"
+
+        def do_cache() -> Layout:
+            d = json.loads(lc.read_text(encoding="utf-8"))
+            return Layout(tuple(d["cam"]) if d["cam"] else None, tuple(d["face"]) if d["face"] else None, d["conf"])
+
+        lay_cache = _ler_cache(do_cache) if lc.exists() and "webcam" not in R else None
         if cfg.shorts.camera_manual and len(cfg.shorts.camera_manual) == 4:
             x, y, w, h = cfg.shorts.camera_manual
             lay = Layout((x, y, w, h), (x + w * 0.4, y + h * 0.25, w * 0.2, h * 0.35), 1.0)
-        elif lc.exists() and "webcam" not in R:
-            d = json.loads(lc.read_text())
-            lay = Layout(tuple(d["cam"]) if d["cam"] else None, tuple(d["face"]) if d["face"] else None, d["conf"])
+        elif lay_cache is not None:
+            lay = lay_cache
         else:
             lay = detect_layout(str(path), info.duration)
-            lc.write_text(json.dumps({"cam": lay.cam, "face": lay.face, "conf": lay.confidence}))
+            gravar_atomico(lc, json.dumps({"cam": lay.cam, "face": lay.face, "conf": lay.confidence}))
             try:   # é só a imagem de conferência: falhar aqui não pode derrubar a análise
                 preview(str(path), info.duration, lay, str(out / "layout_detectado.png"))
             except Exception as e:  # noqa: BLE001
@@ -553,7 +583,7 @@ def render_all(path: Path, cfg: Config, info, name: str, out: Path, moments: lis
                                          segmentos=[])
                 render_short(str(path), rm, replay, cfg, cam_box, None, velocidade=REPLAY_VELOCIDADE,
                              area_jogo=area_jogo)
-                concat([principal, replay], tmp)
+                concat([principal, replay], tmp, cfg)
             finally:
                 _apagar_parcial(principal)
                 _apagar_parcial(replay)
@@ -595,16 +625,20 @@ def render_all(path: Path, cfg: Config, info, name: str, out: Path, moments: lis
     st.done(f"{len(errors)} com erro" if errors else "")
 
     montage_parts: list[Path] = []
-    # nada para montar: não deixa a montagem de uma análise anterior (com a montagem DESLIGADA, a antiga fica)
-    if cfg.montagem.gerar and not keep:
-        _apagar_parcial(out / f"MONTAGEM_{name}.mp4")
     if cfg.montagem.gerar and keep:
         order = keep if cfg.montagem.ordem == "cronologica" else sorted(keep, key=lambda m: -m.score)
         montage_parts = [clips_dir / f"{fname(m)}.mp4" for m in order if (clips_dir / f"{fname(m)}.mp4").exists()]
+        if not montage_parts:
+            print("    [aviso] montagem: nenhum corte dela foi renderizado (veja os erros acima)")
+    # nada para montar: não deixa a montagem de uma análise anterior (com a montagem DESLIGADA, a antiga fica)
+    if cfg.montagem.gerar and not montage_parts:
+        _apagar_parcial(out / f"MONTAGEM_{name}.mp4")
+    if montage_parts:
         st = Step("Montagem com as melhores jogadas")
         try:
             _atomico(out / f"MONTAGEM_{name}.mp4", lambda tmp: _renderizar_e_checar(
-                tmp, lambda: concat(montage_parts, tmp), qc.Esperado(1920, 1080, None, audio_ok, 60.0), "montagem"))
+                tmp, lambda: concat(montage_parts, tmp, cfg), qc.Esperado(1920, 1080, None, audio_ok, 60.0),
+                "montagem"))
             st.done(f"{len(montage_parts)} jogadas, {sum(m.duration for m in keep):.0f}s")
         except Exception as e:  # noqa: BLE001
             print("    " + (registro.erro("montagem", e) if registro else f"[erro] montagem: {resumo_erro(str(e))}"))
@@ -617,7 +651,7 @@ def render_all(path: Path, cfg: Config, info, name: str, out: Path, moments: lis
         st = Step("Compilação de FAILS")
         try:
             _atomico(out / f"FAILS_{name}.mp4", lambda tmp: _renderizar_e_checar(
-                tmp, lambda: concat(partes_fails, tmp), qc.Esperado(1920, 1080, None, audio_ok, 60.0), "fails"))
+                tmp, lambda: concat(partes_fails, tmp, cfg), qc.Esperado(1920, 1080, None, audio_ok, 60.0), "fails"))
             st.done(f"{len(partes_fails)} momentos")
         except Exception as e:  # noqa: BLE001
             print("    " + (registro.erro("fails", e) if registro else f"[erro] fails: {resumo_erro(str(e))}"))

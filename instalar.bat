@@ -10,23 +10,25 @@ echo   Pode deixar rodando: na primeira vez demora (baixa uns 3 GB entre pacotes
 echo   Cada passo e conferido. So aparece "Pronto" no fim se a checagem passar.
 echo.
 
-rem ---- 1. Python 3.11 ou mais novo ----
-set "PY=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
-if not exist "%PY%" for /f "delims=" %%P in ('where python 2^>nul') do if not defined PYOK set "PY=%%P" & set "PYOK=1"
-set "PY_BOM=0"
-if exist "%PY%" "%PY%" -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>nul && set "PY_BOM=1"
-if "%PY_BOM%"=="0" (
-  echo [1/6] Python 3.11+ nao encontrado. Instalando o Python 3.12 pelo winget...
+rem ---- 1. Python 3.11 ou 3.12 (o leitor do banner de round, rapidocr-onnxruntime, nao instala no 3.13+) ----
+set "VERSAO_OK=import sys; sys.exit(0 if (3, 11) <= sys.version_info[:2] <= (3, 12) else 1)"
+set "PY="
+call :testar_python "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+if not defined PY for /f "delims=" %%P in ('py -3.12 -c "import sys; print(sys.executable)" 2^>nul') do call :testar_python "%%P"
+if not defined PY for /f "delims=" %%P in ('py -3.11 -c "import sys; print(sys.executable)" 2^>nul') do call :testar_python "%%P"
+if not defined PY for /f "delims=" %%P in ('where python 2^>nul') do call :testar_python "%%P"
+if not defined PY (
+  echo [1/6] Python 3.11 ou 3.12 nao encontrado. Instalando o Python 3.12 pelo winget...
   where winget >nul 2>nul
   if errorlevel 1 (
     echo ERRO: o winget nao existe neste Windows. Instale o Python 3.12 em python.org e rode este arquivo de novo.
     goto :falhou
   )
   winget install --id Python.Python.3.12 --scope user --silent --accept-package-agreements --accept-source-agreements
-  set "PY=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+  call :testar_python "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
 )
-if not exist "%PY%" (
-  echo ERRO: o Python nao ficou disponivel. Feche esta janela, abra de novo e rode instalar.bat outra vez.
+if not defined PY (
+  echo ERRO: o Python 3.12 nao ficou disponivel. Feche esta janela, abra de novo e rode instalar.bat outra vez.
   goto :falhou
 )
 echo [1/6] Python ok: %PY%
@@ -54,6 +56,18 @@ if "%TEM_FFMPEG%"=="0" (
 echo [2/6] FFmpeg ok.
 
 rem ---- 3. Ambiente e pacotes ----
+rem .venv de uma tentativa com Python 3.13+ (ou copiada de outro PC) nao serve: e recriada
+if exist ".venv\Scripts\python.exe" (
+  ".venv\Scripts\python.exe" -c "%VERSAO_OK%" >nul 2>nul
+  if errorlevel 1 (
+    echo [3/6] O ambiente .venv usa um Python que nao serve ^(precisa 3.11 ou 3.12^). Recriando...
+    rmdir /s /q .venv
+    if exist ".venv" (
+      echo ERRO: nao consegui apagar a pasta .venv. Feche o Bisturi Clips ^(janela preta^) e rode de novo.
+      goto :falhou
+    )
+  )
+)
 if not exist ".venv\Scripts\python.exe" (
   echo [3/6] Criando o ambiente do programa...
   "%PY%" -m venv .venv
@@ -77,9 +91,9 @@ if not exist "entrada" mkdir entrada
 
 rem ---- 4. Modelo de voz (legendas e reacoes) ----
 echo [4/6] Baixando o modelo de voz ^(uns 1,6 GB, so na primeira vez^)...
-".venv\Scripts\python.exe" -c "from cs2clip.config import load_config; from faster_whisper import download_model; download_model(load_config().transcricao.modelo)"
+".venv\Scripts\python.exe" -m cs2clip --baixar-modelo
 if errorlevel 1 (
-  echo ERRO: nao consegui baixar o modelo de voz. Veja a internet e rode instalar.bat de novo.
+  echo ERRO: nao consegui baixar o modelo de voz ^(mensagem acima^). Veja a internet e rode instalar.bat de novo.
   goto :falhou
 )
 
@@ -121,3 +135,10 @@ echo.
 echo A instalacao NAO foi concluida.
 pause
 exit /b 1
+
+rem PY = o caminho recebido, se for um Python 3.11 ou 3.12 que abre (o atalho da Microsoft Store nao abre)
+:testar_python
+if defined PY exit /b 0
+if not exist "%~1" exit /b 0
+"%~1" -c "%VERSAO_OK%" >nul 2>nul && set "PY=%~1"
+exit /b 0

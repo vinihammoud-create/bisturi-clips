@@ -132,7 +132,18 @@ def keyframe_candidates(info: VideoInfo, progress=None, on_frame=None,
         s.codec_context.skip_frame = "NONKEY"
         s.thread_type = "AUTO"
         last_p = 0.0
-        for fr in c.decode(s):
+        ruins = [0]
+
+        def quadros():
+            # pacote corrompido (gravação que travou, VOD com falha) derrubava a varredura do vídeo inteiro:
+            # pula só ele, como o ffmpeg das outras etapas faz
+            for pkt in c.demux(s):
+                try:
+                    yield from pkt.decode()
+                except av.error.InvalidDataError:
+                    ruins[0] += 1
+
+        for fr in quadros():
             if fr.time is None:
                 continue
             t = max(0.0, fr.time - base)
@@ -149,6 +160,8 @@ def keyframe_candidates(info: VideoInfo, progress=None, on_frame=None,
             if progress and t - last_p >= 60:
                 progress((t - last_p) * 0.5)
                 last_p = t
+    if ruins[0]:
+        print(f"    [aviso] {ruins[0]} trecho(s) corrompido(s) no vídeo foram pulados", flush=True)
     gaps = np.diff(times) if len(times) > 1 else np.array([99.0])
     return hits, float(np.median(gaps))
 

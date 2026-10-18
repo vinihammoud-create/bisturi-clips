@@ -49,13 +49,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--jogador", default=None, help="(demo .dem) seu nome no jogo, ou parte dele")
     ap.add_argument("--checar", action="store_true",
                     help="confere o ambiente (ffmpeg, GPU, disco, pacotes, CS2/OBS) e sai, sem processar nada")
+    ap.add_argument("--baixar-modelo", action="store_true",
+                    help="baixa o modelo de voz do config.toml (o instalar.bat usa) e sai")
     ap.add_argument("--forcar-gpu", action="store_true",
                     help="ignora a trava: processa completo mesmo com o CS2 ou o OBS abertos")
     ap.add_argument("--sem-shorts", action="store_true")
     ap.add_argument("--sem-montagem", action="store_true")
     ap.add_argument("--refazer", nargs="?", const="tudo", default=None, metavar="ETAPAS",
                     help="ignora o cache: sozinho refaz tudo; ou liste etapas separadas por vírgula "
-                         "(kills, rounds, voz, falas, chat, webcam, cortes). Ex.: --refazer falas. "
+                         "(kills, rounds, mortes, voz, falas, chat, webcam, cortes). Ex.: --refazer falas. "
                          "Ponha o vídeo ANTES de --refazer")
     a = ap.parse_args(argv)
 
@@ -79,6 +81,16 @@ def main(argv: list[str] | None = None) -> int:
         itens = checagem.checar(ROOT, Path(a.saida))
         print(checagem.texto(itens))
         return 1 if checagem.tem_problema_grave(itens) else 0
+
+    if a.baixar_modelo:
+        from faster_whisper import download_model
+        try:
+            download_model(cfg.transcricao.modelo)
+        except Exception as e:  # noqa: BLE001
+            print(f"✖ Não consegui baixar o modelo de voz {cfg.transcricao.modelo}: {e}")
+            return 1
+        print(f"✔ Modelo de voz {cfg.transcricao.modelo} pronto.")
+        return 0
 
     out_root = Path(a.saida).resolve()  # caminhos absolutos: o ffmpeg dos shorts roda em outra pasta
     out_root.mkdir(parents=True, exist_ok=True)
@@ -112,8 +124,8 @@ def main(argv: list[str] | None = None) -> int:
         print("Nenhum vídeo para processar. Arraste os vídeos sobre processar.bat ou coloque-os em entrada\\.")
         return 1
 
-    from . import checagem
-    from .pipeline import analyze, render_all
+    from . import checagem, qc
+    from .pipeline import _atomico, _renderizar_e_checar, analyze, render_all
     from .render import concat
     from .report import write_report
     from .scan import VideoInvalido
@@ -163,10 +175,12 @@ def main(argv: list[str] | None = None) -> int:
     # "Melhores de todos": top jogadas de todos os vídeos numa montagem só
     if not a.so_analise and cfg.montagem.gerar and len(paths) > 1 and best_global:
         top = sorted(best_global, key=lambda x: -x[0].score)[:12]
-        files = [f for _, f in top]
+        files = [f for _, f in top if f.is_file()]
         if files:
-            try:
-                concat(files, out_root / "MELHORES_DE_TODOS.mp4")
+            try:   # temporário + checagem, como a montagem: cancelado no meio não sobra arquivo pela metade
+                _atomico(out_root / "MELHORES_DE_TODOS.mp4", lambda tmp: _renderizar_e_checar(
+                    tmp, lambda: concat(files, tmp, cfg), qc.Esperado(1920, 1080, None, False, 60.0),
+                    "melhores de todos"))
             except Exception as e:  # noqa: BLE001
                 print("  " + registro.erro("MELHORES_DE_TODOS", e))
 

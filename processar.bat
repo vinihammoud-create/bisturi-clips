@@ -9,6 +9,11 @@ echo   Bisturi Clips - cortes automaticos de CS2
 echo   ------------------------------------------
 echo   Arraste videos sobre este arquivo, ou coloque-os na pasta "entrada".
 echo.
+if not exist ".venv\Scripts\python.exe" (
+  echo O programa ainda nao foi instalado nesta pasta: de dois cliques em instalar.bat primeiro.
+  pause
+  exit /b 1
+)
 ".venv\Scripts\python.exe" -m cs2clip %*
 set "CODIGO=%ERRORLEVEL%"
 echo.

@@ -16,7 +16,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .tools import FFMPEG, imwrite
+from .tools import FFMPEG, gravar_atomico, imwrite
 
 SW, SH = 960, 540  # escala de análise
 
@@ -291,8 +291,8 @@ def area_cached(cache: Path, info, refazer: bool = False) -> Area | None:
         return None
     area = area_bruta(quadros)
     cache.mkdir(parents=True, exist_ok=True)
-    arq.write_text(json.dumps({"versao": AREA_VERSAO, "tamanho": [info.width, info.height],
-                               "area": list(area) if area else None}), encoding="utf-8")
+    gravar_atomico(arq, json.dumps({"versao": AREA_VERSAO, "tamanho": [info.width, info.height],
+                                    "area": list(area) if area else None}))
     return area
 
 

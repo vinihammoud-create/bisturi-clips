@@ -391,6 +391,8 @@ def concat(files: list[Path], out: Path, cfg: Config | None = None) -> None:
     # "-c copy" só é seguro com o mesmo formato em todos: se a GPU falhou no meio, um trecho pode ter saído em
     # x264 e outro em NVENC (os dois 'h264', mas com parâmetros diferentes) e o arquivo juntado sairia com blocos
     # e ainda passaria na checagem. Nesse caso junta reencodando (`cfg` dá o encoder; sem ele, o padrão).
+    if not files:   # o ffmpeg daria só "Invalid data found", sem dizer o motivo
+        raise ValueError("nada para juntar: nenhum trecho foi renderizado")
     codecs = {_codec(f) for f in files}
     if len(codecs) > 1:
         print(f"    (trechos em formatos diferentes: juntando com reencode, mais lento — {' / '.join(sorted(codecs))})",

@@ -184,7 +184,7 @@ def _render_falso(monkeypatch, thumb_falha=False):
     def escreve(m, dest, *a, **k):
         Path(dest).write_bytes(b"video")
     monkeypatch.setattr(pl, "render_por_janelas", lambda m, tmp, fn: escreve(m, tmp))
-    monkeypatch.setattr(pl, "concat", lambda parts, out: Path(out).write_bytes(b"video"))
+    monkeypatch.setattr(pl, "concat", lambda parts, out, cfg=None: Path(out).write_bytes(b"video"))
     monkeypatch.setattr(qc, "exigir", lambda *a, **k: None)
     monkeypatch.setattr(qc, "tem_audio", lambda v: True)
 
