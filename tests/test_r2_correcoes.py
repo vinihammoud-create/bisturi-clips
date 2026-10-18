@@ -270,3 +270,93 @@ def test_exportador_recusa_destino_perigoso(tmp_path):
     exp.conferir_destino(tmp_path / "nova")
     (tmp_path / "vazia").mkdir()
     exp.conferir_destino(tmp_path / "vazia")
+
+
+# ── melhorias M1-M12 ─────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("texto", [
+    '[deteccao]\nmodo = "rapdo"\n', '[montagem]\nordem = "aleatoria"\n',
+    "[shorts]\nlargura = 0\n", "[shorts]\naltura = 1921\n", "[shorts]\ncamera_altura = 1900\ntopo = 160\n",
+    "[shorts]\nzoom_camera = 0\n", "[shorts]\nzoom_gameplay = 0.5\n",
+    "[shorts]\ncamera_manual = [0.1, 0.2]\n", "[shorts]\ncamera_manual = [0.9, 0.2, 0.3, 0.2]\n",
+    "[shorts]\ncamera_manual = [0.1, 0.2, 0, 0.2]\n",
+])
+def test_config_com_valor_que_estouraria_no_render_da_erro_na_leitura(tmp_path, texto):
+    from cs2clip.config import load_config
+    p = tmp_path / "config.toml"
+    p.write_text(texto, encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(p)
+
+
+def test_config_do_projeto_e_camera_manual_valida_passam(tmp_path):
+    from cs2clip.config import load_config
+    cfg = load_config(RAIZ / "config.toml")
+    assert cfg.shorts.topo == 160 and cfg.shorts.gancho == 2.0 and cfg.shorts.versao_efeitos is True
+    assert cfg.fails.gerar is True and cfg.fails.quantidade == 8
+    p = tmp_path / "config.toml"
+    p.write_text("[shorts]\ncamera_manual = [0.02, 0.32, 0.22, 0.25]\n", encoding="utf-8")
+    assert load_config(p).shorts.camera_manual == [0.02, 0.32, 0.22, 0.25]
+
+
+def test_modelo_leve_troca_so_o_padrao(tmp_path):
+    import cs2clip.__main__ as main_mod
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[chat]\nusar = true\n\n[transcricao]\nmodelo = "large-v3-turbo" # Whisper\nidioma = "pt"\n', encoding="utf-8")
+    assert main_mod.main(["--modelo-leve", "--config", str(cfg)]) == 0
+    from cs2clip.config import load_config
+    c = load_config(cfg)
+    assert c.transcricao.modelo == "small" and c.transcricao.idioma == "pt" and c.chat.usar
+    cfg.write_text('[transcricao]\nmodelo = "medium"\n', encoding="utf-8")
+    main_mod.main(["--modelo-leve", "--config", str(cfg)])
+    assert load_config(cfg).transcricao.modelo == "medium"          # escolha do usuário não é mexida
+
+
+@pytest.mark.parametrize("antes", ["", "[chat]\nusar = true\n", "[transcricao]\nidioma = \"pt\"\n"])
+def test_modelo_leve_sem_a_linha_no_config_ainda_funciona(tmp_path, antes):
+    import cs2clip.__main__ as main_mod
+    from cs2clip.config import load_config
+    cfg = tmp_path / "config.toml"
+    if antes:
+        cfg.write_text(antes, encoding="utf-8")
+    main_mod.main(["--modelo-leve", "--config", str(cfg)])
+    assert load_config(cfg).transcricao.modelo == "small"
+
+
+def test_pacotes_da_nvidia_so_vao_com_placa_nvidia():
+    assert "nvidia" not in (RAIZ / "requirements.txt").read_text(encoding="utf-8")
+    gpu = (RAIZ / "requirements-gpu.txt").read_text(encoding="utf-8")
+    assert "nvidia-cublas-cu12" in gpu and "nvidia-cudnn-cu12" in gpu
+    texto = _bat("instalar.bat")
+    assert "where nvidia-smi" in texto and "requirements-gpu.txt" in texto and "--modelo-leve" in texto
+    dev = (RAIZ / "requirements-dev.txt").read_text(encoding="utf-8")
+    assert "requirements-ui.txt" in dev
+
+
+def test_instalador_avisa_quando_aberto_de_dentro_do_zip(tmp_path):
+    if sys.platform != "win32":
+        pytest.skip("cmd.exe só existe no Windows")
+    shutil.copy(RAIZ / "instalar.bat", tmp_path)      # sem a pasta cs2clip ao lado, como no ZIP aberto
+    r = subprocess.run(["cmd", "/c", str(tmp_path / "instalar.bat")], cwd=tmp_path, input="\r\n",
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+    assert r.returncode == 1 and "Extrair tudo" in r.stdout and not (tmp_path / ".venv").exists()
+
+
+def test_exportador_baixa_renders_paralelos_para_2(tmp_path):
+    exp = _exportador()
+    destino = tmp_path / "pub"
+    exp.exportar(destino)
+    texto = (destino / "config.toml").read_text(encoding="utf-8")
+    assert "renders_paralelos = 2" in texto and 'marca = ""' in texto
+
+
+def test_refazer_falas_refaz_so_os_shorts(tmp_path):
+    from cs2clip.refazer import CacheRender
+    corte, short = tmp_path / "01_x.mp4", tmp_path / "01_x_vertical.mp4"
+    for f in (corte, short):
+        f.write_bytes(b"v")
+    c = CacheRender(tmp_path, forcar=False, forcar_shorts=True)
+    c.registrar(corte, "a")
+    c.registrar(short, "a")
+    assert c.pronto(corte, "a") and not c.pronto(short, "a")       # a legenda vem das falas; o corte 16:9 não usa
+    assert not CacheRender(tmp_path, forcar=True).pronto(corte, "a")   # --refazer cortes continua refazendo tudo

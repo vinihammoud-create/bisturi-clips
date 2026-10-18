@@ -133,6 +133,31 @@ def _validar(cfg: Config) -> None:
             raise ValueError(f"{nome} = {valor}: o mínimo é {minimo}")
     if cfg.deteccao.fps_analise <= 0:
         raise ValueError(f"deteccao.fps_analise = {cfg.deteccao.fps_analise}: precisa ser maior que 0")
+    # opções de texto com lista fechada: valor fora dela só estouraria lá no meio do processamento
+    # (o encoder fica de fora de propósito: o render avisa e cai em libx264)
+    for nome, valor, aceitos in (("deteccao.modo", cfg.deteccao.modo, ("rapido", "completo")),
+                                 ("montagem.ordem", cfg.montagem.ordem, ("cronologica", "melhores"))):
+        if valor not in aceitos:
+            raise ValueError(f"{nome} = \"{valor}\": use {' ou '.join(aceitos)}")
+    s = cfg.shorts
+    for nome, valor in (("largura", s.largura), ("altura", s.altura), ("camera_altura", s.camera_altura),
+                        ("zoom_camera", s.zoom_camera)):
+        if valor <= 0:
+            raise ValueError(f"shorts.{nome} = {valor}: precisa ser maior que 0")
+    if s.zoom_gameplay < 1:
+        raise ValueError(f"shorts.zoom_gameplay = {s.zoom_gameplay}: o mínimo é 1 (1 = sem aproximar)")
+    if s.largura % 2 or s.altura % 2:
+        raise ValueError("shorts.largura e shorts.altura precisam ser números pares (limite do H.264)")
+    if s.camera_altura + max(0, s.topo) >= s.altura:
+        raise ValueError(f"shorts: camera_altura ({s.camera_altura}) + topo ({s.topo}) não deixa espaço para o "
+                         f"gameplay na altura {s.altura}")
+    cm = s.camera_manual
+    if cm:
+        ok = (len(cm) == 4 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in cm)
+              and cm[0] >= 0 and cm[1] >= 0 and cm[2] > 0 and cm[3] > 0 and cm[0] + cm[2] <= 1 and cm[1] + cm[3] <= 1)
+        if not ok:
+            raise ValueError("shorts.camera_manual precisa ser [x, y, largura, altura] com valores de 0 a 1 "
+                             "(x + largura e y + altura até 1)")
 
 
 def load_config(path: Path | None) -> Config:

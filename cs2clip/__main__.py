@@ -35,6 +35,28 @@ def _parece_video(p: Path) -> bool:
         return False
 
 
+MODELO_PADRAO, MODELO_LEVE = "large-v3-turbo", "small"
+
+
+def _modelo_leve(arq: Path, cfg) -> str:
+    """Sem placa NVIDIA o Whisper roda no processador, e o modelo padrão levaria horas numa live. Troca só se o
+    modelo ainda é o padrão: quem escolheu outro no config.toml não é mexido."""
+    import re
+    if cfg.transcricao.modelo != MODELO_PADRAO:
+        return f"Modelo de voz mantido: {cfg.transcricao.modelo} (escolha sua no config.toml)."
+    texto = arq.read_text(encoding="utf-8") if arq.exists() else ""
+    linha = f'modelo = "{MODELO_LEVE}"'
+    if re.search(r"^modelo\s*=", texto, flags=re.M):
+        texto = re.sub(r"^modelo\s*=.*$", linha + "  # modelo leve (PC sem NVIDIA); na GPU use \"large-v3-turbo\"",
+                       texto, count=1, flags=re.M)
+    elif re.search(r"^\[transcricao\]", texto, flags=re.M):
+        texto = re.sub(r"^\[transcricao\][ \t]*\r?$", lambda m: m.group(0) + "\n" + linha, texto, count=1, flags=re.M)
+    else:
+        texto += ("\n" if texto and not texto.endswith("\n") else "") + f"\n[transcricao]\n{linha}\n"
+    arq.write_text(texto, encoding="utf-8")
+    return f"Modelo de voz: {MODELO_LEVE} (mais leve para o processador)."
+
+
 def main(argv: list[str] | None = None) -> int:
     for s in (sys.stdout, sys.stderr):
         try:
@@ -51,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="confere o ambiente (ffmpeg, GPU, disco, pacotes, CS2/OBS) e sai, sem processar nada")
     ap.add_argument("--baixar-modelo", action="store_true",
                     help="baixa o modelo de voz do config.toml (o instalar.bat usa) e sai")
+    ap.add_argument("--modelo-leve", action="store_true",
+                    help="PC sem placa NVIDIA (o instalar.bat usa): põe o modelo de voz menor no config.toml e sai")
     ap.add_argument("--forcar-gpu", action="store_true",
                     help="ignora a trava: processa completo mesmo com o CS2 ou o OBS abertos")
     ap.add_argument("--sem-shorts", action="store_true")
@@ -81,6 +105,10 @@ def main(argv: list[str] | None = None) -> int:
         itens = checagem.checar(ROOT, Path(a.saida))
         print(checagem.texto(itens))
         return 1 if checagem.tem_problema_grave(itens) else 0
+
+    if a.modelo_leve:
+        print(_modelo_leve(Path(a.config), cfg))
+        return 0
 
     if a.baixar_modelo:
         from faster_whisper import download_model

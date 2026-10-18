@@ -5,7 +5,7 @@ cd /d "%~dp0\.."
 set "PYTHON=.venv\Scripts\python.exe"
 if not exist "%PYTHON%" (
   echo Não encontrei .venv\Scripts\python.exe.
-  echo Crie ou restaure o ambiente Python 3.12 do projeto antes de instalar a interface.
+  echo Rode instalar.bat na pasta do programa: ele cria o ambiente e instala tudo, inclusive a interface.
   pause
   exit /b 1
 )

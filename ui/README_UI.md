@@ -5,11 +5,11 @@ Interface em português do Brasil para usar o `cs2clip` sem abrir o terminal. O 
 ## Instalar e abrir
 
 1. A pasta `ui/` já fica na raiz do projeto, ao lado de `cs2clip/`, `entrada/`, `saida/` e `config.toml`.
-2. No Windows 11, abra `ui\instalar_ui.bat` uma vez.
-3. Abra `ui\iniciar.bat`. Ele inicia o servidor local e abre o Edge em modo aplicativo; se o Edge não estiver instalado, usa o navegador padrão. Mantenha a janela do terminal aberta; pressione **Ctrl+C** nela para encerrar o servidor.
-4. Para criar o atalho na Área de Trabalho, clique com o botão direito em `ui\criar_atalho.ps1` e escolha executar com PowerShell, ou execute-o em uma janela do PowerShell.
+2. Rode `instalar.bat` na raiz do projeto uma vez: ele instala tudo (inclusive esta interface) e cria o atalho na Área de Trabalho.
+3. Abra o atalho **Bisturi Clips** ou `ui\iniciar.bat`. Ele inicia o servidor local e abre o Edge em modo aplicativo; se o Edge não estiver instalado, usa o navegador padrão. Mantenha a janela do terminal aberta; pressione **Ctrl+C** nela para encerrar o servidor.
+4. Só para refazer o atalho: botão direito em `ui\criar_atalho.ps1` > executar com PowerShell. (`ui\instalar_ui.bat` reinstala só as dependências da interface, para quem já tem a `.venv`.)
 
-O programa usa o Python do projeto: `.venv\Scripts\python.exe`. Não usa Node, npm, React, Vite, fontes externas, CDN, analytics nem telemetria. A fonte dos títulos (Anton, licença OFL) fica em `ui/static/fontes/`; logo, emblema e ícone em `ui/static/` (gerados de `docs/img/logo_original.png`).
+O programa usa o Python do projeto: `.venv\Scripts\python.exe`. Não usa Node, npm, React, Vite, fontes externas, CDN, analytics nem telemetria. A fonte dos títulos (Anton, licença OFL) fica em `ui/static/fontes/`; logo, emblema e ícone em `ui/static/` (gerados da logo original, que não vem neste repositório).
 
 `python -m ui --sem-navegador` só sobe o servidor, sem abrir a janela (útil para testes e screenshots).
 

@@ -3,6 +3,14 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 title Instalar Bisturi Clips
+rem aberto de dentro do ZIP, o Windows extrai so este arquivo numa pasta temporaria: sem o resto nao ha o que instalar
+if not exist "cs2clip\__main__.py" (
+  echo.
+  echo ERRO: este arquivo foi aberto de dentro do ZIP, sem o resto do programa ao lado.
+  echo Extraia o ZIP inteiro numa pasta ^(botao direito no ZIP ^> Extrair tudo^) e de dois cliques no instalar.bat dessa pasta.
+  pause
+  exit /b 1
+)
 echo.
 echo   Instalando o Bisturi Clips
 echo   --------------------------
@@ -14,6 +22,9 @@ rem ---- 1. Python 3.11 ou 3.12 (o leitor do banner de round, rapidocr-onnxrunti
 set "VERSAO_OK=import sys; sys.exit(0 if (3, 11) <= sys.version_info[:2] <= (3, 12) else 1)"
 set "PY="
 call :testar_python "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+call :testar_python "%ProgramFiles%\Python312\python.exe"
+call :testar_python "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+call :testar_python "%ProgramFiles%\Python311\python.exe"
 if not defined PY for /f "delims=" %%P in ('py -3.12 -c "import sys; print(sys.executable)" 2^>nul') do call :testar_python "%%P"
 if not defined PY for /f "delims=" %%P in ('py -3.11 -c "import sys; print(sys.executable)" 2^>nul') do call :testar_python "%%P"
 if not defined PY for /f "delims=" %%P in ('where python 2^>nul') do call :testar_python "%%P"
@@ -82,7 +93,12 @@ if errorlevel 1 (
   echo ERRO: nao consegui atualizar o pip. Veja a internet e tente de novo.
   goto :falhou
 )
-".venv\Scripts\python.exe" -m pip install -r requirements.txt -r requirements-ui.txt
+rem placa NVIDIA (o driver traz o nvidia-smi): leva os pacotes de GPU do Whisper. Sem ela eles seriam ~1,2 GB inuteis.
+set "TEM_NVIDIA=0"
+where nvidia-smi >nul 2>nul && set "TEM_NVIDIA=1"
+set "PACOTES=-r requirements.txt -r requirements-ui.txt"
+if "%TEM_NVIDIA%"=="1" set "PACOTES=%PACOTES% -r requirements-gpu.txt"
+".venv\Scripts\python.exe" -m pip install %PACOTES%
 if errorlevel 1 (
   echo ERRO: a instalacao dos pacotes falhou ^(mensagem acima^). Veja a internet e tente de novo.
   goto :falhou
@@ -90,7 +106,12 @@ if errorlevel 1 (
 if not exist "entrada" mkdir entrada
 
 rem ---- 4. Modelo de voz (legendas e reacoes) ----
-echo [4/6] Baixando o modelo de voz ^(uns 1,6 GB, so na primeira vez^)...
+if "%TEM_NVIDIA%"=="0" (
+  echo       Placa NVIDIA nao encontrada: a voz sera transcrita no processador. Usando o modelo de voz menor ^(small^),
+  echo       bem mais rapido nesse caso. Para trocar, mude "modelo" em config.toml.
+  ".venv\Scripts\python.exe" -m cs2clip --modelo-leve
+)
+echo [4/6] Baixando o modelo de voz ^(a placa NVIDIA usa ~1,6 GB; sem ela e menor, so na primeira vez^)...
 ".venv\Scripts\python.exe" -m cs2clip --baixar-modelo
 if errorlevel 1 (
   echo ERRO: nao consegui baixar o modelo de voz ^(mensagem acima^). Veja a internet e rode instalar.bat de novo.

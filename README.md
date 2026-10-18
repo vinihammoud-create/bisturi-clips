@@ -47,8 +47,8 @@ Sem enviar nada para a internet, sem assinatura, sem marca d'água de terceiros.
 
 | | |
 |---|---|
-| **Sistema** | Windows 10 ou 11 |
-| **Placa de vídeo** | NVIDIA recomendada (GTX 1650 ou melhor). Sem ela também funciona, só que mais devagar. |
+| **Sistema** | Windows 10 ou 11, com o **winget** (App Installer). Ele vem no Windows 11 e no Windows 10 atualizado; se faltar, instale o "Instalador de Aplicativo" pela Microsoft Store. |
+| **Placa de vídeo** | NVIDIA recomendada (GTX 1650 ou melhor). Sem ela também funciona: o instalador escolhe um modelo de voz menor e mais rápido, e a análise de uma live longa leva bem mais tempo. |
 | **Espaço livre** | ~10 GB para o programa, mais o espaço dos seus vídeos |
 | **Vídeo** | gravação ou VOD da partida com o **kill feed visível** (OBS, Twitch, ShadowPlay, Medal...). Webcam é opcional. |
 | **Idioma do jogo** | português, inglês ou espanhol |
@@ -124,6 +124,9 @@ Sim. O 4:3 esticado foi o mais testado; os outros foram testados com vídeos con
 
 **As reações funcionam em outro idioma?**
 Por enquanto a voz (raiva, hype, risada) entende **português**. Abates, rounds e mortes funcionam com o jogo em português, inglês ou espanhol.
+
+**O instalador disse que o winget não existe. E agora?**
+Instale o Python 3.12 em python.org (marque *Add Python to PATH*). Baixe o FFmpeg em ffmpeg.org (build do gyan.dev) e copie `ffmpeg.exe` e `ffprobe.exe` para a pasta `bin\` do programa. Depois dê dois cliques no `instalar.bat` de novo.
 
 **Posso usar a demo da partida?**
 Pode. Arraste o arquivo `.dem` e informe o seu nick: o programa lê abates, clutch, ACE e o placar direto da demo.

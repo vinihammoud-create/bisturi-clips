@@ -517,7 +517,8 @@ def render_all(path: Path, cfg: Config, info, name: str, out: Path, moments: lis
     errors: list[tuple[str, BaseException]] = []
 
     forcar = render_desatualizado(out / ".cache", cfg, refazer)
-    cache_r = CacheRender(out / ".cache", forcar)
+    # --refazer falas só refaz os shorts (têm legenda); o corte 16:9 não usa as falas
+    cache_r = CacheRender(out / ".cache", "cortes" in refazer, "falas" in refazer)
     h_corte, h_short = hash_corte(cfg), hash_short(cfg)   # na impressão: config nova refaz só o tipo afetado
     for d in (clips_dir, shorts_dir, thumbs_dir, out):  # sobras de uma execução interrompida
         for sobra in d.glob("*.tmp.*"):

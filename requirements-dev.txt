@@ -1,2 +1,5 @@
 -r requirements.txt
+-r requirements-ui.txt
+pandas>=2.0               # tabelas falsas nos testes da demo (tests/test_demo.py)
+av>=12                    # PyAV: quadros-chave da varredura (cs2clip/scan.py)
 pytest>=8.0

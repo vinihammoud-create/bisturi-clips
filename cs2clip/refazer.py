@@ -93,9 +93,10 @@ class CacheRender:
     """Lembra, por arquivo (`.cache/render_meta.json`), de qual momento ele foi renderizado. Um arquivo
     só é reaproveitado se existe, não está vazio e a impressão do momento é a mesma."""
 
-    def __init__(self, cache: Path, forcar: bool):
+    def __init__(self, cache: Path, forcar: bool, forcar_shorts: bool = False):
         self.arq = cache / "render_meta.json"
         self.forcar = forcar
+        self.forcar_shorts = forcar_shorts   # --refazer falas: a legenda vem das falas, o corte 16:9 não usa
         self._lock = threading.Lock()
         try:
             self.meta: dict[str, str] = {} if forcar else json.loads(self.arq.read_text(encoding="utf-8"))
@@ -103,7 +104,9 @@ class CacheRender:
             self.meta = {}
 
     def pronto(self, f: Path, imp: str) -> bool:
-        return (not self.forcar) and f.is_file() and f.stat().st_size > 0 and self.meta.get(f.name) == imp
+        if self.forcar or (self.forcar_shorts and "_vertical" in f.name):
+            return False
+        return f.is_file() and f.stat().st_size > 0 and self.meta.get(f.name) == imp
 
     def registrar(self, f: Path, imp: str) -> None:
         with self._lock:

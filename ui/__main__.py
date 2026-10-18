@@ -102,7 +102,7 @@ def main() -> int:
         return 0
     except Exception as exc:
         print(f"Não consegui iniciar a interface: {exc}", file=sys.stderr)
-        print("Confira se as dependências foram instaladas com ui\\instalar_ui.bat.", file=sys.stderr)
+        print("Confira se as dependências foram instaladas: rode instalar.bat na pasta do programa.", file=sys.stderr)
         return 1
 
 

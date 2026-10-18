@@ -34,6 +34,9 @@ depois = 1.5              # no short compacto: segundos depois de cada abate
 largura = 1080
 altura = 1920
 camera_altura = 608       # altura do painel da webcam (topo); o resto é gameplay
+topo = 160                # faixa no alto, sob as abas do TikTok/Reels/Shorts (a câmera desce para o rosto aparecer)
+gancho = 2.0              # o short começa só isto antes do 1º abate (a ação logo de cara)
+versao_efeitos = true     # gera também uma versão com tremida + replay em câmera lenta (2 arquivos por short)
 marca = ""       # seu @ na faixa do topo do short, ex.: "@seucanal" (vazio ou sem a linha = sem texto)
 zoom_camera = 5.0         # largura do recorte da câmera, em "larguras de rosto"
 zoom_gameplay = 1.25      # >1 aproxima o gameplay e esconde o HUD das bordas
@@ -41,6 +44,10 @@ legendas = true           # legenda animada palavra por palavra
 selo_jogada = true        # "DOUBLE KILL", "ACE"... no instante do abate
 zoom_no_abate = true      # "soco" de zoom em cada abate
 # camera_manual = [0.02, 0.32, 0.22, 0.25]   # força a posição da webcam (x, y, largura, altura em 0–1)
+
+[fails]
+gerar = true              # compilação de FAILS: sua morte seguida de frustração ou risada (FAILS_<id>.mp4)
+quantidade = 8            # no máximo, por vídeo
 
 [montagem]
 gerar = true
@@ -59,7 +66,7 @@ atraso = 6.0              # usado se não der para calibrar pelo próprio vídeo
 encoder = "auto"          # auto | h264_nvenc | hevc_nvenc | libx264
 cq = 21                   # menor = mais qualidade e arquivo maior (19–23)
 lufs = -14.0              # volume padrão de YouTube/TikTok/Instagram
-renders_paralelos = 3
+renders_paralelos = 2
 
 [demo]
 jogador = ""             # seu nome no jogo (ou parte dele). Ex.: "Dollar". Vazio = o programa lista os jogadores

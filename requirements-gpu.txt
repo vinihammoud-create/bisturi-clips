@@ -1,0 +1,4 @@
+# Bibliotecas da NVIDIA que o Whisper usa para rodar na placa de vídeo (CUDA). Só o instalar.bat as instala,
+# e só quando acha uma placa NVIDIA (nvidia-smi). Sem placa elas seriam ~1,2 GB inúteis.
+nvidia-cublas-cu12
+nvidia-cudnn-cu12>=9,<10
