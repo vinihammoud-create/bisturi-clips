@@ -226,3 +226,11 @@ def test_texto_das_partes_diz_quando_o_placar_vem_da_demo():
     com = texto_partes(dividir_partes(rounds, [], 600.0, exatos=[(80.0, 400.0)]), "v", 600.0)
     sem = texto_partes(dividir_partes(rounds, [], 600.0), "v", 600.0)
     assert "placar exato (da demo)" in com and "placar aproximado" in sem
+
+
+def test_titulo_e_hashtag_do_clutch_ganho():
+    from cs2clip.publicar import hashtags, titulos
+    m = Moment(0, 10, "abate", kills=[Event(1.0, "kill"), Event(3.0, "kill"), Event(5.0, "kill")], clutch=(2, True))
+    assert titulos(m)[0].startswith("CLUTCH 1v2") and "#clutch" in hashtags(m, "")
+    perdido = Moment(0, 10, "abate", kills=[Event(1.0, "kill"), Event(3.0, "kill")], clutch=(2, False))
+    assert titulos(perdido)[0].startswith("DOUBLE KILL") and "#clutch" not in hashtags(perdido, "")

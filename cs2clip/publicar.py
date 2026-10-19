@@ -45,6 +45,8 @@ def titulos(m: Moment) -> list[str]:
     if n == 0:
         return ["Que momento na live 🔥", "Olha isso no CS2", "Isso aconteceu na live de hoje"]
     base = BASE[n] if n > 1 or not m.kills[0].hs else "Que HS"
+    if m.clutch and m.clutch[1]:   # clutch ganho (só com a demo): é o que a jogada tem de mais forte
+        base = f"CLUTCH 1v{m.clutch[0]}"
     ctx = _contexto(m)
     fogo = " 🔥" if m.faixa == "DESTAQUE" else ""
     return [f"{base} {ctx}".strip() + fogo,
@@ -66,6 +68,8 @@ def hashtags(m: Moment, marca: str, short: bool = True) -> list[str]:
         tags.append("#ace")
     if n >= 2:
         tags.append("#multikill")
+    if m.clutch and m.clutch[1]:
+        tags.append("#clutch")
     if any(k.hs for k in m.kills):
         tags.append("#headshot")
     if "match point" in " ".join(m.reasons).lower():
