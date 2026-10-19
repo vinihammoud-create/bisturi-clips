@@ -90,7 +90,7 @@ HYPE_FORTE = ["que tiro", "clutch", "ace", "que isso", "inacreditavel", "puta qu
 # Servem para raiva E para comemoração ("caralho, que tiro!"): sozinhos só viram RAIVA com o contexto do jogo
 # (você tinha morrido ou o round foi perdido). Revisão 17/10/2026: "absurdo"/"puta que pariu" sem abate viravam
 # raiva até em comemoração; no gabarito, "Manito, caralho" (conversa, round ganho) era uma raiva falsa.
-AMBIGUOS = {"caralho", "porra", "puta que pariu", "pqp", "absurdo", "nao acredito", "como assim", "cacete", "nossa"}
+AMBIGUOS = {"caralho", "porra", "puta que pariu", "pqp", "absurdo", "nao acredito", "como assim", "cacete", "nossa", "quase", "aff"}
 
 
 def _termos(falas: list[Word], a: float, b: float, lista: list[str]) -> list[str]:
@@ -154,7 +154,7 @@ def classificar(inicio: float, fim: float, voz: np.ndarray | None, falas: list[W
 def anotar(moments, partes: list[Parte], voz: np.ndarray | None, falas: list[Word],
            abates: list[float], limiar: float = LIMIAR_VOZ, mortes: list[float] = ()) -> None:
     """Preenche em cada `Moment` a parte do vídeo, o round (e se foi ganho ou perdido), a emoção e,
-    no Deathmatch, o rótulo "SEQUÊNCIA xN". Reação com emoção troca o rótulo genérico "REAÇÃO"."""
+    no Deathmatch, o rótulo "SEQUÊNCIA xN". Reação com emoção troca o rótulo genérico "REAÇÃO" (menos o CLIPA, pedido pelo streamer)."""
     for m in moments:
         # abate logo depois do banner é do round que acabou (o mesmo ajuste de sequencia.unir_sequencias)
         t = ajustar_pos_round(m.focus, partes) if m.kills else m.focus
@@ -167,5 +167,5 @@ def anotar(moments, partes: list[Parte], voz: np.ndarray | None, falas: list[Wor
         e = classificar(m.start, m.end, voz, falas, abates, resultado, limiar, mortes, janelas=m.janelas)
         if e is not None:
             m.emocao, m.confianca, m.emocao_motivos = e.categoria, e.confianca, e.motivos
-            if m.kind == "reacao":
+            if m.kind == "reacao" and m.label != "CLIPA":   # o corte pedido na live ("clipa isso") mantém a marca
                 m.label = e.categoria

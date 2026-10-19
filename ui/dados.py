@@ -6,6 +6,7 @@ import os
 import shutil
 import tempfile
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -160,13 +161,28 @@ class DadosProjeto:
         dados = ler_json(caminho, {})
         return dados if isinstance(dados, dict) else {}
 
-    def linhas_log(self, quantidade: int = 30) -> list[str]:
+    def linhas_log(self, quantidade: int = 30, desde: float | None = None) -> list[str]:
+        """Últimas linhas do log.txt, só da execução mais recente: o Registro acrescenta ao arquivo e abre cada
+        execução com um cabeçalho '===== data =====' (senão o erro de um vídeo de ontem apareceria no de hoje).
+        Com `desde` (instante em que o job começou), uma execução mais velha que ele não é do job: devolve vazio."""
         try:
             caminho = self._arquivo_saida_seguro("log.txt")
             with caminho.open("r", encoding="utf-8", errors="replace") as arquivo:
-                return arquivo.readlines()[-max(1, min(int(quantidade), 200)):]
+                linhas = arquivo.readlines()
         except OSError:
             return []
+        for i in range(len(linhas) - 1, -1, -1):
+            if linhas[i].startswith("===== ") and linhas[i].rstrip().endswith(" ====="):
+                linhas = linhas[i:]
+                if desde is not None:
+                    try:
+                        gravado = datetime.strptime(linhas[0].strip().strip("=").strip(), "%Y-%m-%d %H:%M:%S").timestamp()
+                    except (ValueError, OverflowError, OSError):
+                        break
+                    if gravado < desde - 1:
+                        return []
+                break
+        return linhas[-max(1, min(int(quantidade), 200)):]
 
     def listar_entrada(self) -> list[dict[str, Any]]:
         self.entrada.mkdir(parents=True, exist_ok=True)
@@ -192,7 +208,7 @@ class DadosProjeto:
     ) -> dict[str, Any]:
         if not pode_editar():
             raise RuntimeError("Espere terminar o processamento e a fila.")
-        if acao not in {"aprovar", "descartar", "restaurar"}:
+        if acao not in {"aprovar", "desaprovar", "descartar", "restaurar"}:
             raise ValueError("Ação não reconhecida.")
         try:
             foco_alvo = float(foco)
@@ -225,6 +241,8 @@ class DadosProjeto:
                 raise FileNotFoundError("Não encontrei essa jogada. Atualize a tela e tente novamente.")
             if acao == "aprovar":
                 encontrado["aprovado"] = True
+            elif acao == "desaprovar":
+                encontrado["aprovado"] = None   # volta a "não revisado" (os outros leitores já tratam null assim)
             elif acao == "descartar":
                 encontrado["excluido"] = True
             else:

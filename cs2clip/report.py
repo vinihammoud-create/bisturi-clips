@@ -19,7 +19,7 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Highlights CS2</title>
 <style>
-:root{--bg:#0e1013;--card:#171a1f;--line:#262a31;--txt:#e9edf2;--mut:#9aa3ad;--acc:#ffd23f;--kill:#ff4d4d;--reac:#4dabff;--win:#3ddc84;--lose:#ff6b6b}
+:root{--bg:#0e1013;--card:#171a1f;--line:#262a31;--txt:#e9edf2;--mut:#9aa3ad;--acc:#ffd23f;--kill:#ff4d4d;--reac:#4dabff;--fail:#9b6bff;--win:#3ddc84;--lose:#ff6b6b}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,Segoe UI,sans-serif}
 header{padding:28px 24px 8px;max-width:1280px;margin:auto}h1{margin:0 0 4px;font-size:26px}
 .sub{color:var(--mut)}.stats{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
@@ -31,7 +31,7 @@ main{max-width:1280px;margin:auto;padding:12px 24px 48px;display:grid;grid-templ
 .c{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .th{position:relative;aspect-ratio:16/9;background:#000;cursor:pointer}.th img,.th video{width:100%;height:100%;object-fit:cover;display:block}
 .tag{position:absolute;left:10px;top:10px;background:var(--kill);color:#fff;font-weight:800;font-size:12px;padding:3px 8px;border-radius:6px;letter-spacing:.03em}
-.tag.reacao{background:var(--reac)}.sc{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.7);color:var(--acc);font-weight:800;padding:3px 8px;border-radius:6px}
+.tag.reacao{background:var(--reac)}.tag.fail{background:var(--fail)}.sc{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.7);color:var(--acc);font-weight:800;padding:3px 8px;border-radius:6px}
 .ctx{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.02em}
 .ctx.round_ganho{background:rgba(61,220,132,.15);color:var(--win);border:1px solid var(--win)}
 .ctx.round_perdido{background:rgba(255,107,107,.15);color:var(--lose);border:1px solid var(--lose)}
@@ -46,7 +46,7 @@ main{max-width:1280px;margin:auto;padding:12px 24px 48px;display:grid;grid-templ
 </style></head><body>
 <header><h1>Highlights CS2</h1><div class="sub">__SUB__</div>
 <div class="stats">__STATS__</div>
-<div class="bar"><button data-f="all" class="on">Todas</button><button data-f="abate">Jogadas</button><button data-f="reacao">Reações</button><button data-f="short">Com short</button><button data-s="score">Ordenar por nota</button><button data-s="time">Ordem do vídeo</button></div>
+<div class="bar"><button data-f="all" class="on">Todas</button><button data-f="abate">Jogadas</button><button data-f="reacao">Reações</button><button data-f="fail">Fails</button><button data-f="short">Com short</button><button data-s="score">Ordenar por nota</button><button data-s="time">Ordem do vídeo</button></div>
 </header><main id="g"></main>
 <script>
 const D=__DATA__;let F='all',S='score';
@@ -72,6 +72,18 @@ def write_report(out_html: Path, entries: list[dict], stats: dict[str, str], sub
     page = (PAGE.replace("__SUB__", html.escape(subtitle)).replace("__STATS__", st)
             .replace("__DATA__", json.dumps(entries, ensure_ascii=False)))
     out_html.write_text(page, encoding="utf-8")
+
+
+def write_report_video(pasta: Path, entries: list[dict], stats: dict[str, str], subtitle: str) -> None:
+    """Relatório só deste vídeo, em `<pasta>/relatorio.html`. As entradas vêm com caminhos relativos à pasta de
+    saída ("<pasta>/cortes/x.mp4"); aqui perdem o prefixo para valerem a partir da própria pasta do vídeo."""
+    pre = pasta.name + "/"
+
+    def rel(c):
+        return c[len(pre):] if isinstance(c, str) and c.startswith(pre) else c
+    write_report(pasta / "relatorio.html",
+                 [{**e, "thumb": rel(e["thumb"]), "clip": rel(e["clip"]), "short": rel(e["short"])} for e in entries],
+                 stats, subtitle)
 
 
 def entry(m: Moment, video: str, rel_thumb: str, rel_clip: str | None, rel_short: str | None,

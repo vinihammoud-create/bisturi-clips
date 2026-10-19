@@ -71,6 +71,7 @@ def gravar_momentos(out: Path, moments: list[Moment], video: str, duracao: float
             "assistencias": [a.t for a in m.assists], "motivos": m.reasons, "falas": m.hype_words,
             "parte": m.parte, "parte_tipo": m.parte_tipo, "round": m.round_n, "round_resultado": m.round_resultado,
             "emocao": m.emocao, "confianca": m.confianca or None, "emocao_motivos": m.emocao_motivos,
+            "clutch": {"inimigos": m.clutch[0], "ganhou": m.clutch[1]} if m.clutch else None,
             "arquivos": arqs,
             "aprovado": rev.get("aprovado"), "excluido": rev.get("excluido", False),
         })

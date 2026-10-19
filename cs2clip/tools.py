@@ -48,7 +48,10 @@ def gravar_atomico(arq: Path, dados: str | bytes) -> None:
 def imread(path, flags: int = 1):
     import cv2
     import numpy as np
-    data = np.fromfile(str(path), np.uint8)
+    try:
+        data = np.fromfile(str(path), np.uint8)
+    except OSError:   # arquivo que não existe (recorte apagado): None, como um PNG vazio
+        return None
     return cv2.imdecode(data, flags) if data.size else None
 
 

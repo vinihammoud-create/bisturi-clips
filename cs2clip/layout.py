@@ -159,7 +159,7 @@ def cam_crop(lay: Layout, src_w: int, src_h: int, aspect: float, zoom: float = 5
 # animado), webcam/chat encostados na borda do jogo, jogo fora do centro do quadro, telas fora do jogo em mais de
 # 30% dos quadros amostrados. Ultrawide (21:9) é detectado, mas o HUD dele não foi medido com dados reais: painel da
 # morte e banner ficam na proporção da própria área (`como_esticado`), sem a regra do 4:3 esticado.
-AREA_VERSAO = "1"
+AREA_VERSAO = "2"
 ESCURO = 28            # cinza <= isto é preto de barra (preto de vídeo = 16; folga para o ruído da compressão)
 FIXO = 0.7             # pixel de barra: escuro em >= 70% dos quadros que votam
 FRACAO_ESCURA = 0.6    # coluna/linha com >= 60% de "preto que fica" é barra (webcam/chat de até 40% da altura passa)
@@ -228,6 +228,8 @@ def area_bruta(frames: list[np.ndarray]) -> Area | None:
             else:
                 h = min(H, _par(w / p))
             break
+    else:
+        return None   # proporção desconhecida: overlay escuro simétrico (faixa, painel), não barra de resolução
     if not 1.0 <= w / h <= 2.6:
         return None
     x, y = _par((W - w) / 2), _par((H - h) / 2)

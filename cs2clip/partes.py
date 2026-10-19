@@ -46,6 +46,7 @@ class Parte:
     abates: int = 0
     dur_round: float = 100.0      # duração típica de um round nesta partida (mediana entre banners)
     numeros: list[int] = field(default_factory=list)   # nº real estimado de cada banner (conta os perdidos)
+    exata: bool = False           # rounds, placar e limites vêm da demo da partida (cs2clip/sincronizar.py)
 
     @property
     def placar(self) -> str:
@@ -70,10 +71,11 @@ def _grupos(rounds: list[RoundTimelineEntry], gap_max: float) -> list[list[Round
     return out
 
 
-def _partida(g: list[RoundTimelineEntry], duration: float) -> Parte:
+def _partida(g: list[RoundTimelineEntry], duration: float, completa: bool = False) -> Parte:
+    """`completa`: os rounds vêm da demo (todos, sem banner perdido): a numeração é 1, 2, 3... e nada é estimado."""
     gaps = [b.t - a.t for a, b in zip(g, g[1:])]
     med = min(ROUND_MAX, max(ROUND_MIN, statistics.median(gaps))) if gaps else 100.0
-    perdidos = [max(0, round(gp / med) - 1) if gp > 1.7 * med else 0 for gp in gaps]
+    perdidos = [max(0, round(gp / med) - 1) if gp > 1.7 * med and not completa else 0 for gp in gaps]
     numeros = [1 + i + sum(perdidos[:i]) for i in range(len(g))]   # banner perdido desloca os números seguintes
     fim = min(duration, g[-1].t + FIM_BANNER)
     if duration - fim <= FIM_ESTENDIDO * med:
@@ -84,10 +86,23 @@ def _partida(g: list[RoundTimelineEntry], duration: float) -> Parte:
 
 
 def dividir_partes(rounds: list[RoundTimelineEntry], abates: list[float], duration: float,
-                   gap_max: float = GAP_MAX, min_rounds: int = MIN_ROUNDS) -> list[Parte]:
+                   gap_max: float = GAP_MAX, min_rounds: int = MIN_ROUNDS,
+                   exatos: list[tuple[float, float]] | None = None) -> list[Parte]:
     """`abates`: instantes (s) dos abates do próprio jogador. Devolve as partes em ordem de tempo,
-    cobrindo o vídeo todo (trechos fora de partida < TRECHO_MIN s são descartados)."""
-    partidas = [_partida(g, duration) for g in _grupos(rounds, gap_max) if len(g) >= min_rounds]
+    cobrindo o vídeo todo (trechos fora de partida < TRECHO_MIN s são descartados).
+    `exatos`: (início, fim) de partidas conhecidas pela demo (cs2clip/sincronizar.py): os rounds dentro de cada
+    intervalo formam UMA partida com esses limites, sem estimativa; os demais seguem a regra dos banners."""
+    exatos = sorted(exatos or [])
+    livres = [r for r in rounds if not any(a <= r.t <= b for a, b in exatos)]
+    partidas = [_partida(g, duration) for g in _grupos(livres, gap_max) if len(g) >= min_rounds]
+    for a, b in exatos:
+        g = sorted((r for r in rounds if a <= r.t <= b), key=lambda r: r.t)
+        if len(g) >= min_rounds:
+            p = _partida(g, duration, completa=True)
+            p.inicio, p.fim = a, b
+            p.exata = True
+            partidas.append(p)
+    partidas.sort(key=lambda p: p.inicio)
     partes: list[Parte] = []
     cursor = 0.0
     ha_partida = bool(partidas)
@@ -182,8 +197,9 @@ def texto_partes(partes: list[Parte], nome: str, duration: float) -> str:
     for p in partes:
         extra = ""
         if p.tipo == "partida":
-            extra = f" · placar aproximado, {len(p.rounds)} rounds lidos"
-            if p.rounds_faltando:
+            extra = (f" · placar exato (da demo), {len(p.rounds)} rounds" if p.exata
+                     else f" · placar aproximado, {len(p.rounds)} rounds lidos")
+            if p.rounds_faltando and not p.exata:
                 extra += f" (~{p.rounds_faltando} podem ter ficado de fora)"
             extra += f" · {p.abates} abates seus"
         elif p.tipo == "deathmatch":

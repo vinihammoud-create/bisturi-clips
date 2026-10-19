@@ -85,3 +85,19 @@ def test_detecta_a_propria_morte_em_varias_resolucoes(ocr):
 def test_juntar_varias_leituras_da_mesma_morte():
     from cs2clip.mortes import juntar
     assert juntar([100.0, 100.5, 101.0, 130.0, 131.5]) == [100.0, 130.0]
+
+
+# ── VITÓRIA do lado CT: painel azul, sem vermelho nem dourado (vídeo + demo, 18/10/2026) ──────────
+
+@pytest.mark.parametrize("nome", ["vitoria_azul_ct_960x540.png", "vitoria_azul_ct_b_960x540.png"])
+def test_detecta_vitoria_azul_do_ct(ocr, nome):
+    # antes: o pré-filtro só aceitava vermelho/dourado e descartava todo round ganho pelo CT (7 de 42 rounds)
+    from cs2clip.roundend import AZUL_MIN, _azul_banner, pode_ser_banner
+    frame = _load(nome)
+    assert _azul_banner(frame) >= AZUL_MIN and pode_ser_banner(frame)
+    r = detect_round_end(frame, ocr)
+    assert r is not None and r.resultado == "vitoria"
+
+
+def test_quadro_normal_nao_vira_banner_azul(ocr):
+    assert detect_round_end(_load("normal_1280x720.png"), ocr) is None

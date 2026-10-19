@@ -78,6 +78,29 @@ def _cor_banner(frame_bgr: np.ndarray) -> float:
     return float(max(vermelho.mean(), dourado.mean()))
 
 
+AZUL_MIN = 0.01   # fração mínima de pixels azuis na caixa do banner (medida em 18/10/2026, ver pode_ser_banner)
+
+
+def _azul_banner(frame_bgr: np.ndarray) -> float:
+    """0-1: fração de pixels azuis DENTRO da caixa do banner. A VITÓRIA do lado CT vem num painel azul, sem
+    vermelho nem dourado: o pré-filtro antigo a descartava. Medido num vídeo com demo (18/10/2026): em 20 quadros
+    de banner a medida ficou entre 0,016 e 0,052; em 432 quadros de jogo comuns, só 8% passaram de 0,01."""
+    import cv2
+    crop = _crop_rel(frame_bgr, BANNER_REL)
+    if crop.size == 0:
+        return 0.0
+    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+    h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    return float(((h >= 95) & (h <= 125) & (s >= 90) & (v >= 140)).mean())
+
+
+def pode_ser_banner(frame_bgr: np.ndarray, tint_threshold: float = 0.08) -> bool:
+    """Pré-filtro barato antes do OCR: tela tingida (banner clássico), letras/borda vermelhas ou douradas na caixa
+    (banner escuro) ou painel azul (vitória do CT)."""
+    return (_tint_score(frame_bgr) >= tint_threshold or _cor_banner(frame_bgr) >= COR_MIN
+            or _azul_banner(frame_bgr) >= AZUL_MIN)
+
+
 def _normalize(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
@@ -94,8 +117,8 @@ class RoundEnd:
 def detect_round_end(frame_bgr: np.ndarray, ocr, tint_threshold: float = 0.08) -> RoundEnd | None:
     """`ocr` é uma instância de `rapidocr_onnxruntime.RapidOCR()` (o chamador
     cria 1 vez e reaproveita — carregar o modelo é caro)."""
-    # pré-filtro: tela tingida (banner clássico) OU letras/borda coloridas na caixa (banner escuro)
-    if _tint_score(frame_bgr) < tint_threshold and _cor_banner(frame_bgr) < COR_MIN:
+    # pré-filtro: tela tingida (banner clássico), letras/borda coloridas na caixa (banner escuro) ou painel azul
+    if not pode_ser_banner(frame_bgr, tint_threshold):
         return None
     crop = _crop_rel(frame_bgr, BANNER_REL)
     if crop.size == 0:

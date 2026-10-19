@@ -18,7 +18,7 @@ from __future__ import annotations
 import dataclasses
 
 from .moments import BASE, Moment, _label
-from .partes import Parte, ajustar_pos_round, intervalo_do_round, round_de
+from .partes import Parte, ajustar_pos_round, intervalo_do_round, parte_de, round_de
 
 VAO_SUSPEITO = 30.0   # s: entre banners suspeitos (um foi perdido), só junta abates bem próximos
 
@@ -108,7 +108,14 @@ def unir_sequencias(moments: list[Moment], partes: list[Parte], cortes, words=No
         if intervalo and intervalo[2]:
             limite = min(limite, VAO_SUSPEITO)
         morreu_no_meio = grupos and any(grupos[-1][-1].kills[-1].t < k < m.kills[0].t for k in mortes)
-        if grupos and chave is not None and chave == chave_atual and vao <= limite and not morreu_no_meio:
+        # banner do round perdido (abates longe do próximo banner ficam sem round): na MESMA partida, só junta se o
+        # vão for curto (VAO_SUSPEITO), já que não dá para saber se um round terminou no meio
+        p_ant = parte_de(grupos[-1][-1].kills[-1].t, partes) if grupos else None
+        sem_chave_na_partida = bool(grupos and chave is None and chave_atual is None
+                                    and parte is not None and parte.tipo == "partida" and p_ant is parte)
+        mesma = ((chave is not None and chave == chave_atual and vao <= limite)
+                 or (sem_chave_na_partida and vao <= min(limite, VAO_SUSPEITO)))
+        if grupos and mesma and not morreu_no_meio:
             grupos[-1].append(m)
         else:
             grupos.append([m])

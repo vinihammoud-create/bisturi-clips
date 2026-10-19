@@ -5,8 +5,8 @@ e mostram os componentes; a Steam separa clipes em 3 classes (Featured/Standard/
 PROPOSTA inicial (a revisão cética lembrou que valores de jogo profissional não valem direto para Premier): são
 ajustados com os seus votos (R4) e medidos contra o gabarito.
 
-Só entra aqui o que dá para medir NO VÍDEO. Clutch 1vX, economia, bomba e abertura do round precisam da demo da
-mesma partida (E6, caminho A) e entram quando ela existir.
+Entra o que dá para medir NO VÍDEO. Clutch 1vX, parede e noscope só existem quando a demo da mesma partida foi
+sincronizada (cs2clip/sincronizar.py). Economia, bomba e abertura do round ainda não entram.
 """
 from __future__ import annotations
 
@@ -21,6 +21,12 @@ PESOS = {
     "tudo_rapido": 15,           # 4+ abates em até 5 s
     "headshot": 3,
     "fumaca": 5,
+    "parede": 6,                 # através da parede (só a demo sabe; o kill feed mostra o ícone, mas raramente se lê)
+    "sem_mira": 12,              # noscope
+    "cego": 3,                   # atirando cego
+    "clutch_ganho": 10,          # + clutch_por_inimigo x (inimigos - 1): clutch 1v3 ganho = 10 + 2 x 8 = 26
+    "clutch_por_inimigo": 8,
+    "clutch_perdido": 4,         # tentou e perdeu: ainda é uma jogada
     "pistol_ganho": 5,           # round 1 ou 13 (MR12) ganho
     "match_point": 10,           # alguém com 12 rounds
     "doze_a_doze": 8,
@@ -73,6 +79,13 @@ def pontuar(m: Moment, partes: list[Parte], limiar_voz: float = 0.6) -> None:
             m.add(p["tudo_rapido"], f"{n} abates em {ts[-1] - ts[0]:.1f} s")
         m.add(p["headshot"] * sum(k.hs for k in m.kills), "headshot(s)")
         m.add(p["fumaca"] * sum("smoke" in k.icons for k in m.kills), "através da fumaça")
+        m.add(p["parede"] * sum("wallbang" in k.icons for k in m.kills), "através da parede")
+        m.add(p["sem_mira"] * sum("noscope" in k.icons for k in m.kills), "sem mira (noscope)")
+        m.add(p["cego"] * sum("blind" in k.icons for k in m.kills), "atirando cego")
+        if m.clutch:
+            inimigos, ganhou = m.clutch
+            m.add(p["clutch_ganho"] + p["clutch_por_inimigo"] * (inimigos - 1) if ganhou else p["clutch_perdido"],
+                  f"clutch 1v{inimigos}" + (" ganho" if ganhou else " (perdido)"))
         # abate logo depois do banner é do round que acabou (o mesmo ajuste de sequencia.unir_sequencias)
         parte, numero, resultado = round_de(ajustar_pos_round(m.kills[-1].t, partes), partes)
         if parte is not None and numero is not None:

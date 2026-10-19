@@ -30,12 +30,13 @@ class Registro:
                 self._cabecalho = True
             f.write(linhas.rstrip() + "\n")
 
-    def erro(self, contexto: str, detalhe: str | BaseException) -> str:
-        """Conta o problema, grava o detalhe completo no log e devolve a linha curta para o terminal."""
+    def erro(self, contexto: str, detalhe: str | BaseException, limite: int = 200) -> str:
+        """Conta o problema, grava o detalhe completo no log e devolve a linha curta para o terminal.
+        `limite` só sobe onde a linha traz uma lista que o usuário precisa ler inteira (jogadores da demo)."""
         if isinstance(detalhe, BaseException):
             completo = "".join(traceback.format_exception(type(detalhe), detalhe, detalhe.__traceback__))
         else:
             completo = str(detalhe)
         self.n += 1
         self._escrever(f"[erro] {contexto}\n{completo}")
-        return f"[erro] {contexto}: {resumo_erro(str(detalhe))}"
+        return f"[erro] {contexto}: {resumo_erro(str(detalhe), limite)}"

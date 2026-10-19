@@ -85,30 +85,6 @@ def _tem_modulo(nome: str) -> bool:
         return False
 
 
-def _cs_demo_manager() -> bool:
-    """O CS Demo Manager está instalado? (só é preciso para GRAVAR jogadas de demo)"""
-    if sys.platform != "win32":
-        return False
-    try:
-        import winreg
-    except ImportError:
-        return False
-    for raiz in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
-        try:
-            chave = winreg.OpenKey(raiz, r"Software\Microsoft\Windows\CurrentVersion\Uninstall")
-        except OSError:
-            continue
-        for i in range(winreg.QueryInfoKey(chave)[0]):
-            try:
-                sub = winreg.OpenKey(chave, winreg.EnumKey(chave, i))
-                nome = winreg.QueryValueEx(sub, "DisplayName")[0]
-            except OSError:
-                continue
-            if "demo manager" in str(nome).lower():
-                return True
-    return False
-
-
 def checar(raiz: Path, saida: Path | None = None, ativos: set[str] | None = None) -> list[Item]:
     itens: list[Item] = []
     ok_py = sys.version_info >= (3, 11)
@@ -161,10 +137,6 @@ def checar(raiz: Path, saida: Path | None = None, ativos: set[str] | None = None
                       "fechados: GPU livre para o processamento completo" if not quem
                       else f"{' e '.join(quem)} aberto: só a prévia roda", False,
                       "Feche o jogo/OBS para o processamento completo (ou use --forcar-gpu)."))
-    cdm = _cs_demo_manager()
-    itens.append(Item("CS Demo Manager", cdm,
-                      "instalado" if cdm else "não instalado (só é preciso para gravar jogadas de demo)",
-                      False, "Opcional: instale quando formos gravar demos."))
     return itens
 
 

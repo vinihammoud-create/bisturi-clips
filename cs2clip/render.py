@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import shutil
 import re
 import subprocess
+import threading
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,6 +23,7 @@ from .tools import FFMPEG, FFPROBE
 W16, H16, FPS = 1920, 1080, 60
 FRACAO_MIRA = 0.40   # altura da mira dentro do painel de jogo do short (0,5 = meio)
 FONTES = Path(__file__).resolve().parent / "assets" / "fontes"
+_TRAVA_FONTES = threading.Lock()   # os shorts renderizam em paralelo e dividem a pasta _fontes
 
 
 @lru_cache(maxsize=1)
@@ -280,10 +283,14 @@ def render_short(src: str, m: Moment, out: Path, cfg: Config, cam_box: tuple[int
     if ass_file is not None:
         if "'" in str(FONTES):   # apóstrofo fecha as aspas do filtro: usa uma cópia das fontes ao lado do .ass
             copia = ass_file.parent / "_fontes"
-            copia.mkdir(exist_ok=True)
-            for fonte in FONTES.glob("*.ttf"):
-                if not (copia / fonte.name).exists():
-                    shutil.copy2(fonte, copia / fonte.name)
+            with _TRAVA_FONTES:
+                copia.mkdir(exist_ok=True)
+                for fonte in FONTES.glob("*.ttf"):
+                    alvo = copia / fonte.name
+                    if not alvo.exists():
+                        tmp = alvo.with_name(alvo.name + ".tmp")   # cópia pela metade nunca parece pronta
+                        shutil.copy2(fonte, tmp)
+                        os.replace(tmp, alvo)
             post += f",ass=filename={ass_file.name}:fontsdir=_fontes"
         else:
             post += f",ass=filename={ass_file.name}:fontsdir='{_caminho_filtro(FONTES)}'"
@@ -346,6 +353,15 @@ def _faixa(arquivo: Path, sel: str, campos: str) -> str:
     return r.stdout.strip()
 
 
+def _duracao(arquivo: Path) -> float:
+    r = subprocess.run([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(arquivo)],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    try:
+        return float(r.stdout.strip())
+    except ValueError:
+        return 0.0
+
+
 def _feito_no_x264(arquivo: Path) -> bool:
     """O x264 grava a própria marca ("x264 - core") no 1º quadro; o NVENC não. Os dois dão 'h264', mas cada um tem
     seus parâmetros (SPS/PPS): juntados com "-c copy", o trecho do outro encoder pode sair com blocos."""
@@ -373,13 +389,17 @@ def _juntar_reencodando(files: list[Path], out: Path, cfg: Config) -> None:
     """Junta trechos de formatos diferentes (outro encoder, perfil ou tamanho): mais lento, mas sempre funciona.
     Erro aqui se repetiria para sempre, porque os cortes do cache são os mesmos a cada execução."""
     w, h = (int(x) for x in _faixa(files[0], "v:0", "width,height").split(",")[:2])
-    com_audio = all(_faixa(f, "a:0", "codec_name") for f in files)
+    tem_a = [bool(_faixa(f, "a:0", "codec_name")) for f in files]
+    com_audio = any(tem_a)   # trecho mudo ganha silêncio: o som dos outros não pode ser descartado
     fil = []
-    for i in range(len(files)):
+    for i, f in enumerate(files):
         fil.append(f"[{i}:v]scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,"
                    f"setsar=1,fps={FPS},format=yuv420p[v{i}]")
         if com_audio:
-            fil.append(f"[{i}:a]aresample=48000,aformat=channel_layouts=stereo[a{i}]")
+            if tem_a[i]:
+                fil.append(f"[{i}:a]aresample=48000,aformat=channel_layouts=stereo[a{i}]")
+            else:
+                fil.append(f"aevalsrc=0|0:d={_duracao(f):.3f}:s=48000[a{i}]")
     entradas = "".join(f"[v{i}][a{i}]" if com_audio else f"[v{i}]" for i in range(len(files)))
     fil.append(f"{entradas}concat=n={len(files)}:v=1:a={1 if com_audio else 0}[v]" + ("[a]" if com_audio else ""))
     _run_enc(lambda: [FFMPEG, "-y", "-v", "error", "-nostdin", *[x for f in files for x in ("-i", str(f))],

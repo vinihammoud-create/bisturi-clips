@@ -23,8 +23,10 @@ HOP = 0.1  # resolução das curvas (s)
 def load_audio(path: str, sr: int = SR) -> np.ndarray:
     cmd = [FFMPEG, "-v", "error", "-nostdin", "-i", path, "-vn", "-ac", "1", "-ar", str(sr),
            "-f", "s16le", "pipe:1"]
-    raw = subprocess.run(cmd, capture_output=True, check=True).stdout
-    return np.frombuffer(raw, np.int16)
+    r = subprocess.run(cmd, capture_output=True)
+    if r.returncode != 0:
+        raise RuntimeError("ffmpeg não conseguiu ler o áudio: " + r.stderr.decode("utf-8", "replace")[-500:].strip())
+    return np.frombuffer(r.stdout, np.int16)
 
 
 def window(audio: np.ndarray, start: float, end: float, sr: int = SR) -> np.ndarray:

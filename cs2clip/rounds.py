@@ -19,7 +19,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .roundend import COR_MIN, _cor_banner, _tint_score, detect_round_end
+from .roundend import detect_round_end, pode_ser_banner
 from .tools import FFMPEG, gravar_atomico
 
 SCALE_W, SCALE_H = 960, 540  # mesma escala usada nos testes de roundend.py
@@ -129,7 +129,7 @@ class RoundCollector:
             from .layout import recortar_area
             img_bgr = recortar_area(img_bgr, self.area)
         # tela tingida (banner clássico) OU letras/borda coloridas na caixa do banner (banner escuro, que não tinge)
-        if _tint_score(img_bgr[::2, ::2]) < TINT_MIN and _cor_banner(img_bgr[::2, ::2]) < COR_MIN:
+        if not pode_ser_banner(img_bgr[::2, ::2], TINT_MIN):
             return
         if self._ocr is None:
             self._ocr = criar_ocr()

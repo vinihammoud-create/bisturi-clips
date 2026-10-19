@@ -126,7 +126,7 @@ def test_ace_com_pausas_vira_um_video_so_com_os_trechos_dos_abates():
     [m] = momentos_da_demo(_p([ab(10), ab(30), ab(50), ab(70), ab(90)]))
     assert m.label == "ACE" and len(m.kills) == 5
     assert m.janelas == [(6.0, 12.5), (26.0, 32.5), (46.0, 52.5), (66.0, 72.5), (86.0, 92.5)]
-    assert m.score >= momentos_da_demo(_p([ab(10)]))[0].score + 90
+    assert m.score >= momentos_da_demo(_p([ab(10)]))[0].score + 65 and m.score <= 99   # nota 0-99 (cs2clip/nota.py)
 
 
 def test_clutch_ganho_marca_a_jogada_do_round_e_o_resultado():

@@ -23,6 +23,8 @@ from .tools import ROOT
 VIDEO_EXT = {".mp4", ".mkv", ".mov", ".flv", ".ts", ".webm", ".avi", ".m4v", ".mpg", ".mpeg", ".wmv", ".mts",
              ".m2ts", ".3gp", ".ogv"}
 DEMO_EXT = {".dem"}
+LIVE_LONGA_S = 600          # vídeo mais longo que isto sem nenhum abate é quase sempre problema de gravação, não de jogo
+SUB_RELATORIO = "Gerado automaticamente — clique na miniatura para assistir ao corte."
 
 
 def _parece_video(p: Path) -> bool:
@@ -141,12 +143,16 @@ def main(argv: list[str] | None = None) -> int:
                                         f"Use: {' '.join(sorted(VIDEO_EXT | DEMO_EXT))}"))
         else:
             paths.append(p)
+    quem = a.jogador or cfg.demo.jogador    # sem o seu nome a demo não serve (não adivinha quem é você)
     if demos_da_pasta and not paths and not demos:   # pasta só com demos: analisa as demos
         demos = demos_da_pasta
     elif demos_da_pasta and paths:
-        print(f"  [aviso] {len(demos_da_pasta)} demo(s) na pasta ignorada(s) porque há vídeos: "
-              "arraste a .dem sobre processar.bat para analisá-la.")
-    if demos:
+        if quem:   # vídeo + demos da mesma pasta: as demos corrigem a análise do vídeo (cs2clip/sincronizar.py)
+            demos = demos + demos_da_pasta
+        else:
+            print(f"  [aviso] {len(demos_da_pasta)} demo(s) na pasta ignorada(s) porque há vídeos: diga o seu nome "
+                  "do jogo (--jogador \"nome\" ou [demo] jogador no config.toml) para usá-las com o vídeo.")
+    if demos and not paths:
         return _so_demos(demos, a, cfg, out_root, registro, paths)
     if not paths:
         print("Nenhum vídeo para processar. Arraste os vídeos sobre processar.bat ou coloque-os em entrada\\.")
@@ -165,6 +171,21 @@ def main(argv: list[str] | None = None) -> int:
         cfg.modo_previa = True
         a.so_analise = True
 
+    lidas: dict[Path, object] = {}   # demo -> (partida, nome) lida uma vez só, ou None se não serviu
+
+    def demos_do_video(video: Path) -> list:
+        """Demos a cruzar com este vídeo: as pedidas na linha de comando e, com o seu nome, as .dem ao lado dele."""
+        if not quem:
+            return []
+        candidatas = list(demos) or sorted(x for x in video.parent.iterdir() if x.suffix.lower() in DEMO_EXT)
+        saida = []
+        for d in candidatas:
+            if d not in lidas:
+                lidas[d] = _ler_demo_do_video(d, quem)
+            if lidas[d] is not None:
+                saida.append(lidas[d])
+        return saida
+
     player_dir = ROOT / "dados" / "jogador"
     t0 = time.time()
     all_entries, best_global = [], []
@@ -174,7 +195,9 @@ def main(argv: list[str] | None = None) -> int:
     for n, p in enumerate(paths, 1):
         progresso.video(p.name, n)
         try:
-            info, name, out, moments, words, lay = analyze(p, cfg, out_root, player_dir, R)
+            com_demos = demos_do_video(p)
+            info, name, out, moments, words, lay = analyze(p, cfg, out_root, player_dir, R,
+                                                           **({"demos": com_demos} if com_demos else {}))
         except VideoInvalido as e:
             print("  " + registro.erro(p.name, str(e)))
             continue
@@ -186,18 +209,30 @@ def main(argv: list[str] | None = None) -> int:
         totals["kills"] += sum(len(m.kills) for m in moments)
         totals["hs"] += sum(e.hs for m in moments for e in m.kills)
         totals["moments"] += len(moments)
+        if not any(m.kills for m in moments) and info.duration > LIVE_LONGA_S:
+            print("  " + registro.erro(p.name, "Nenhum abate achado neste vídeo longo. Confira: o kill feed aparece no "
+                                               "canto de cima à direita? O HUD está visível? O vídeo é do CS2, sem "
+                                               "compressão forte (720p)? O jogo está em português, inglês ou espanhol?",
+                                     limite=400))
+        # relatório deste vídeo (em saida/<pasta>/relatorio.html): a interface abre o relatório certo de cada um
+        stats_v = _stats_do_video(moments)
         if a.so_analise:
             from .report import entry
-            all_entries += [entry(m, p.name, "", None, None) for m in moments]
+            es = [entry(m, p.name, "", None, None) for m in moments]
+            all_entries += es
+            _relatorio_do_video(out, es, stats_v)
             continue
         try:   # erro no render de UM vídeo não derruba o lote (os seguintes e o relatório continuam)
             entries, _, keep = render_all(p, cfg, info, name, out, moments, words, lay, registro, R)
         except Exception as e:  # noqa: BLE001
             print("  " + registro.erro(p.name, e) + f"  (detalhes em {registro.arquivo.name})")
             from .report import entry
-            all_entries += [entry(m, p.name, "", None, None) for m in moments]   # a análise entra no relatório
+            es = [entry(m, p.name, "", None, None) for m in moments]   # a análise entra no relatório
+            all_entries += es
+            _relatorio_do_video(out, es, stats_v)
             continue
         all_entries += entries
+        _relatorio_do_video(out, entries, stats_v)
         best_global += keep  # [(momento, arquivo do corte)]: caminhos exatos, sem adivinhar por nome
 
     # "Melhores de todos": top jogadas de todos os vídeos numa montagem só
@@ -220,7 +255,7 @@ def main(argv: list[str] | None = None) -> int:
     write_report(out_root / "relatorio.html", all_entries,
                  {"vídeos": str(processados), "horas analisadas": f"{totals['dur'] / 3600:.1f}",
                   "abates": str(totals["kills"]), "headshots": hs_pct, "momentos": str(totals["moments"])},
-                 "Gerado automaticamente — clique na miniatura para assistir ao corte.")
+                 SUB_RELATORIO)
     if registro.n:
         progresso.fim("com_problemas", f"{registro.n} problema(s)")
         print(f"\n⚠ Terminou em {time.time() - t0:.0f}s com {registro.n} problema(s). Detalhes em {registro.arquivo}. "
@@ -231,14 +266,45 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _stats_do_video(moments: list) -> dict[str, str]:
+    """Números do cabeçalho do relatório de UM vídeo."""
+    abates = sum(len(m.kills) for m in moments)
+    hs = sum(e.hs for m in moments for e in m.kills)
+    return {"abates": str(abates), "headshots": f"{100 * hs / abates:.0f}%" if abates else "–",
+            "momentos": str(len(moments))}
+
+
+def _relatorio_do_video(out: Path, entradas: list[dict], stats: dict[str, str],
+                        subtitulo: str = SUB_RELATORIO) -> None:
+    """Grava `<pasta do vídeo>/relatorio.html` só com os momentos dele. Falhar aqui não derruba o lote."""
+    from .report import write_report_video
+    try:
+        write_report_video(out, entradas, stats, subtitulo)
+    except OSError as e:
+        print(f"  [aviso] não consegui gravar o relatório de {out.name}: {e}")
+
+
+def _ler_demo_do_video(demo: Path, quem: str):
+    """(partida, nome do arquivo) ou None. Demo ilegível ou sem o seu nome não derruba o vídeo: só não é usada."""
+    from .demo import DemoInvalida, ler_demo
+    try:
+        partida = ler_demo(demo, quem)
+    except DemoInvalida as e:
+        print(f"  [aviso] demo {demo.name} ignorada: {e}")
+        return None
+    if partida.jogador is None:
+        print(f"  [aviso] demo {demo.name} ignorada: não achei o jogador '{quem}' nela.")
+        return None
+    print(f"  demo {demo.name}: {partida.titulo}, {len(partida.abates)} abates de {partida.nome}")
+    return partida, demo.name
+
+
 def _so_demos(demos: list[Path], a, cfg, out_root: Path, registro: Registro, videos: list[Path]) -> int:
     """Entrada por demo (.dem): lê os eventos exatos do jogo e grava momentos + relatório, sem vídeo.
     (O corte do vídeo a partir da demo depende da sincronização demo↔vídeo, etapa seguinte.)"""
     from .demo import DemoInvalida, analisar_demo
     from .indice import atualizar_indice
     from .report import entry, write_report
-    if videos:
-        print("  [aviso] vídeo junto com demo ainda não é sincronizado: por enquanto só a demo foi analisada.")
     entradas, abates, jogadas, ok = [], 0, 0, 0
     progresso.iniciar(out_root, len(demos))
     for n, d in enumerate(demos, 1):
@@ -246,7 +312,7 @@ def _so_demos(demos: list[Path], a, cfg, out_root: Path, registro: Registro, vid
         try:
             partida, momentos, out = analisar_demo(d, cfg, out_root, a.jogador)
         except DemoInvalida as e:
-            print("  " + registro.erro(d.name, str(e)))
+            print("  " + registro.erro(d.name, str(e), limite=1500))   # traz "Jogadores: ..." inteiro: a interface lê
             continue
         except Exception as e:  # noqa: BLE001
             print("  " + registro.erro(d.name, e) + f"  (detalhes em {registro.arquivo.name})")
@@ -258,7 +324,10 @@ def _so_demos(demos: list[Path], a, cfg, out_root: Path, registro: Registro, vid
                          datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), str(d.resolve()))
         abates += len(partida.abates)
         jogadas += len(momentos)
-        entradas += [entry(m, d.name, "", None, None) for m in momentos]
+        es = [entry(m, d.name, "", None, None) for m in momentos]
+        entradas += es
+        _relatorio_do_video(out, es, {"abates": str(len(partida.abates)), "momentos": str(len(momentos))},
+                            "Gerado a partir da demo (tempos em segundos da partida, não do vídeo).")
         print(f"▶ {d.name}\n  {partida.titulo} · {partida.nome}: {len(partida.abates)} abates, "
               f"{len(partida.mortes)} mortes, {len(partida.clutches)} situação(ões) de clutch, "
               f"{len(momentos)} jogadas → {out}")

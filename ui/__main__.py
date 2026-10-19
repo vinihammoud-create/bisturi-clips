@@ -38,6 +38,31 @@ def porta_livre() -> int:
     raise RuntimeError("Não encontrei uma porta livre entre 8765 e 8775.")
 
 
+def portas_ocupadas() -> list[int]:
+    """Portas 8765-8775 onde já há algo escutando. Só estas valem a pena testar: no Windows, bater numa porta
+    fechada demora ~1 s (medido), e testar as 11 seguidas travaria a abertura por mais de 10 s."""
+    ocupadas = []
+    for porta in range(8765, 8776):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(("127.0.0.1", porta))
+            except OSError:
+                ocupadas.append(porta)
+    return ocupadas
+
+
+def instancia_ativa() -> str | None:
+    """Endereço de um servidor do Bisturi Clips que já está rodando (a janela do app foi fechada, a preta não), ou None."""
+    for porta in portas_ocupadas():
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{porta}/health", timeout=1) as resposta:
+                if resposta.status == 200 and b'"ok"' in resposta.read(200):
+                    return f"http://127.0.0.1:{porta}"
+        except Exception:
+            continue
+    return None
+
+
 def caminho_edge() -> str | None:
     """O msedge.exe quase nunca está no PATH (o Windows o acha pelo 'App Paths', que o Popen não consulta)."""
     achado = shutil.which("msedge")
@@ -52,6 +77,18 @@ def caminho_edge() -> str | None:
     return None
 
 
+def abrir_janela(url: str) -> None:
+    """Abre a interface no Edge em modo aplicativo; sem Edge, no navegador padrão."""
+    edge = caminho_edge()
+    if edge:
+        try:
+            subprocess.Popen([edge, f"--app={url}"], shell=False)  # noqa: S603
+            return
+        except OSError:
+            pass
+    webbrowser.open(url, new=1)
+
+
 def abrir_navegador(server: uvicorn.Server, url: str) -> None:
     prazo = time.monotonic() + 30
     while time.monotonic() < prazo and not server.should_exit:
@@ -64,14 +101,7 @@ def abrir_navegador(server: uvicorn.Server, url: str) -> None:
             except Exception:
                 time.sleep(0.2)
                 continue
-            edge = caminho_edge()
-            if edge:
-                try:
-                    subprocess.Popen([edge, f"--app={url}"], shell=False)  # noqa: S603
-                    return
-                except OSError:
-                    pass
-            webbrowser.open(url, new=1)
+            abrir_janela(url)
             return
         time.sleep(0.2)
 
@@ -82,6 +112,15 @@ def main() -> int:
     parser.add_argument("--sem-navegador", action="store_true", help="Só sobe o servidor, sem abrir a janela")
     args = parser.parse_args()
     try:
+        # Já há um servidor do programa rodando (a pessoa fechou só a janela do app): abre a janela nele e sai,
+        # em vez de subir um 2º servidor com outra fila numa porta diferente.
+        if args.port is None:
+            ativa = instancia_ativa()
+            if ativa:
+                if not args.sem_navegador:
+                    abrir_janela(ativa)
+                print(f"O Bisturi Clips já está rodando em {ativa}. Abri a janela de novo.")
+                return 0
         porta = args.port if args.port is not None else porta_livre()
         if not 8765 <= porta <= 8775:
             raise ValueError("A porta precisa estar entre 8765 e 8775.")

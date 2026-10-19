@@ -35,13 +35,13 @@
     <section class="view active" id="view-inicio" aria-label="Início">
       <div class="hero">
         <img class="hero-logo" src="/static/logo.png" alt="Bisturi Clips — AI clips &amp; moments" width="640" height="457">
-        <p class="hero-lead">Suas lives e demos de CS2 viram <strong>cortes</strong>, <strong>shorts</strong> e <strong>montagem</strong>. Sozinho.</p>
+        <p class="hero-lead">Suas lives de CS2 viram <strong>cortes</strong>, <strong>shorts</strong> e <strong>montagem</strong>. Sozinho. A demo (.dem) da mesma partida deixa a análise mais exata.</p>
       </div>
 
       <div class="steps-grid">
         <!-- Passo 1 -->
         <section class="step-card step-1 is-active" id="step-1" aria-labelledby="step-1-title">
-          <header class="step-head"><span class="step-num">1</span><div><h2 id="step-1-title">Escolha o vídeo ou a demo</h2><p>Live, gravação ou arquivo .dem do CS2.</p></div></header>
+          <header class="step-head"><span class="step-num">1</span><div><h2 id="step-1-title">Escolha o vídeo ou a demo</h2><p>Live ou gravação em vídeo. A .dem sozinha gera só a tabela de abates; junto do vídeo da mesma partida, melhora a análise.</p></div></header>
           <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Solte aqui seu vídeo ou demo; pressione Enter para escolher arquivos">
             <span class="drop-icon" aria-hidden="true"><i class="i i-upload"></i></span>
             <strong class="drop-title">Arraste o arquivo para cá</strong>
@@ -153,7 +153,8 @@
         <section class="panel help-paths"><div><h3>Onde ficam os arquivos?</h3><p><strong>entrada/</strong> guarda o que você arrastou. <strong>saida/</strong> guarda os cortes, os shorts, a montagem e os relatórios.</p><p class="muted">Tudo roda neste computador. Nenhum vídeo é enviado para a internet.</p></div><button class="button button-secondary" id="help-open-output" type="button"><i class="i i-folder" aria-hidden="true"></i> Abrir pasta saída</button></section>
         <section class="panel help-paths"><div><h3>Está tudo funcionando?</h3><p>Confere o FFmpeg, a placa de vídeo, o espaço em disco e se o jogo está aberto.</p></div><button class="button button-secondary" id="run-check" type="button"><i class="i i-check" aria-hidden="true"></i> Verificar meu computador</button><pre id="check-result" class="hidden"></pre></section>
       </div>
-      <p class="help-keys muted">Atalhos na tela do vídeo: <kbd>J</kbd>/<kbd>K</kbd> próximo e anterior · <kbd>A</kbd> gostei · <kbd>D</kbd> descartar · <kbd>Espaço</kbd> tocar/pausar · <kbd>Esc</kbd> fechar o player.</p>
+      <p class="help-keys muted">Atalhos na tela do vídeo: <kbd>J</kbd>/<kbd>K</kbd> próximo e anterior · <kbd>A</kbd> gostei (de novo, desmarca) · <kbd>D</kbd> descartar · <kbd>Espaço</kbd> tocar/pausar · <kbd>Esc</kbd> fechar o player.</p>
+      <p class="help-keys muted">A janela preta mantém o programa ativo. Fechar só esta janela não encerra nada: para encerrar de vez, feche a janela preta. Se abrir o atalho de novo, esta janela volta sem iniciar outro programa.</p>
     </section>
 
     <footer class="site-footer">
@@ -177,11 +178,11 @@
     <form class="welcome-dialog" id="welcome-form" novalidate>
       <img class="welcome-logo" src="/static/logo.png" alt="Bisturi Clips" width="640" height="457">
       <h2 id="welcome-title">Bem-vindo!</h2>
-      <p>O Bisturi Clips assiste às suas lives e demos de CS2, acha as melhores jogadas e reações e entrega cortes, shorts e uma montagem prontos para postar.</p>
+      <p>O Bisturi Clips assiste às suas lives de CS2, acha as melhores jogadas e reações e entrega cortes, shorts e uma montagem prontos para postar. Com a demo (.dem) da mesma partida, os números e os instantes ficam mais exatos.</p>
       <p class="muted">Tudo roda neste computador. Nenhum vídeo vai para a internet.</p>
       <label class="field-label welcome-field" for="welcome-marca">Qual é o @ do seu canal?
         <input id="welcome-marca" type="text" maxlength="40" autocomplete="off" placeholder="@seucanal">
-        <small>Aparece pequeno no topo dos shorts e nas hashtags. Pode deixar vazio. Dá para mudar depois em Configurar.</small>
+        <small>Aparece pequeno no topo dos shorts (só quando o programa detecta a sua webcam) e nas hashtags. Pode deixar vazio. Dá para mudar depois em Configurar.</small>
       </label>
       <p class="welcome-error hidden" id="welcome-error" role="alert"></p>
       <div class="welcome-actions">

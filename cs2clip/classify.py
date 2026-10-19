@@ -8,6 +8,7 @@ automaticamente como o segmento colorido mais recorrente.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -254,8 +255,14 @@ class PlayerModel:
     def load(cls, folder: Path) -> "PlayerModel | None":
         ex = []
         for f in sorted(folder.glob("*.png")):
-            m = imread(f, cv2.IMREAD_GRAYSCALE)
+            if not re.fullmatch(r"\d+_\d+", f.stem):
+                print(f"    aviso: {f.name} ignorado (nome fora do padrão NN_largura.png)")
+                continue
             w = int(f.stem.split("_")[1])
+            m = imread(f, cv2.IMREAD_GRAYSCALE)
+            if w < 1 or m is None or m.ndim != 2 or m.shape[1] < 1:
+                print(f"    aviso: {f.name} ignorado (PNG inválido)")
+                continue
             ex.append(Segment(0, w - 1, m))
         return cls(ex) if ex else None
 

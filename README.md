@@ -34,7 +34,7 @@ Sem enviar nada para a internet, sem assinatura, sem marca d'água de terceiros.
 - **Junta o round inteiro num vídeo só.** Matou 1, esperou, matou mais 3? Vira uma jogada só, com o tempo parado cortado.
 - **Ouve a sua voz.** Grito de comemoração, raiva depois de morrer, risada e até o comando falado **"clipa isso"**.
 - **Dá uma nota de 0 a 99** para cada momento e escolhe os melhores.
-- **Monta shorts verticais profissionais.** Webcam em cima, jogo embaixo com a mira no centro, legenda animada, selo da jogada (TRIPLE KILL, ACE...), gancho nos 2 primeiros segundos e o seu @.
+- **Monta shorts verticais profissionais.** Webcam em cima, jogo embaixo com a mira no centro, legenda animada, selo da jogada (TRIPLE KILL, ACE...), gancho nos 2 primeiros segundos e o seu @ (o @ aparece no topo quando a webcam é detectada).
 - **Faz duas versões de cada short**: uma limpa e outra com efeitos (tremida no abate e replay em câmera lenta).
 - **Separa os FAILS** (as mortes engraçadas ou de raiva) numa compilação própria.
 - **Escreve títulos e hashtags** para cada short. É só copiar e postar.
@@ -59,11 +59,11 @@ Sem enviar nada para a internet, sem assinatura, sem marca d'água de terceiros.
 2. Dê dois cliques em **`instalar.bat`**. Ele instala tudo sozinho: Python, FFmpeg, os pacotes e o modelo de voz. Na primeira vez demora, porque baixa uns 3 GB.
 3. No fim, aparece o atalho **Bisturi Clips** na sua Área de Trabalho. Pronto.
 
-> O Windows pode mostrar "O Windows protegeu o computador" na primeira vez. Clique em **Mais informações → Executar assim mesmo**. O programa é de código aberto: tudo o que ele faz está aqui no GitHub.
+> O Windows pode mostrar um aviso na primeira vez. Se aparecer **"Abrir Arquivo - Aviso de Segurança"** (comum com o `.bat` baixado em ZIP), clique em **Executar**. Se aparecer a tela azul **"O Windows protegeu o computador"** (SmartScreen, só em alguns casos), clique em **Mais informações → Executar assim mesmo**. O programa é de código aberto: tudo o que ele faz está aqui no GitHub.
 
 ## 🎮 Como usar
 
-**1. Abra o programa** pelo atalho. Na primeira vez ele pergunta o @ do seu canal (vai no topo dos shorts e nas hashtags).
+**1. Abra o programa** pelo atalho. Na primeira vez ele pergunta o @ do seu canal (vai nas hashtags e, quando a webcam é detectada, no topo dos shorts).
 
 <p align="center">
   <img src="docs/img/tela_boasvindas_pc.png" alt="Tela de boas-vindas" width="720">
@@ -129,7 +129,8 @@ Por enquanto a voz (raiva, hype, risada) entende **português**. Abates, rounds 
 Instale o Python 3.12 em python.org (marque *Add Python to PATH*). Baixe o FFmpeg em ffmpeg.org (build do gyan.dev) e copie `ffmpeg.exe` e `ffprobe.exe` para a pasta `bin\` do programa. Depois dê dois cliques no `instalar.bat` de novo.
 
 **Posso usar a demo da partida?**
-Pode. Arraste o arquivo `.dem` e informe o seu nick: o programa lê abates, clutch, ACE e o placar direto da demo.
+Pode, e fica bem melhor. Só a `.dem`: informe o seu nick e o programa lê abates, clutch, ACE e o placar direto dela.
+Com o **vídeo da mesma partida**, ponha a `.dem` na mesma pasta dele e informe o seu nick (`[demo] jogador` no `config.toml`, ou `--jogador "nick"` na linha de comando): o programa liga os dois sozinho e usa os fatos exatos da demo no vídeo (placar e rounds certos, headshot, parede, noscope, clutch). Demo de outra partida é ignorada.
 
 **Dá para mudar o visual dos shorts?**
 Sim, na tela **Configurar**: o seu @, a quantidade de shorts, a legenda, o zoom e outras opções.

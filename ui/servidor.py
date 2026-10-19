@@ -82,6 +82,13 @@ def _abrir_explorer(caminho: Path) -> None:
         subprocess.Popen(["explorer.exe", str(caminho)], shell=False)  # noqa: S603
 
 
+# O Python no Windows lê os tipos do registro (HKCR\.js): se outro programa deixou ".js" como text/plain, o nosniff
+# faz o navegador recusar o app.js e a interface fica em branco. Fixar os tipos da interface antes de servir.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("font/ttf", ".ttf")
+
+
 def _resposta_arquivo(arquivo: Path, request: Request) -> Response:
     """Serve arquivos locais com suporte a HTTP Range para player de vídeo."""
     tamanho = arquivo.stat().st_size
@@ -184,6 +191,7 @@ def create_app(
     core_load, core_cls = _carregar_core_config()
     configuracao = ConfiguracaoProjeto(raiz, load_config_fn=load_config_fn or core_load, config_cls=config_cls or core_cls)
     escolha = chooser or _seletor_nativo
+    trava_seletor = threading.Lock()   # um seletor nativo por vez: cada um cria um tk.Tk() em thread própria
     abrir_pasta = open_folder_fn or _abrir_explorer
     checagem = checar_fn or _executar_checagem
 
@@ -271,8 +279,9 @@ def create_app(
         return {"itens": dados.listar_entrada()}
 
     @app.get("/api/log")
-    async def api_log():
-        return {"linhas": dados.linhas_log(30)}
+    async def api_log(desde: float | None = None):
+        # `desde` = quando o job começou: o log.txt acumula execuções, e só a deste job interessa.
+        return {"linhas": dados.linhas_log(30, desde)}
 
     @app.get("/api/videos/{video_id}")
     async def api_video(video_id: str):
@@ -285,6 +294,7 @@ def create_app(
             montagem = f"MONTAGEM_{video_id}.mp4"
             links = {
                 "revisao": (pasta / "revisao.html").is_file(),
+                "relatorio": (pasta / "relatorio.html").is_file(),   # relatório só deste vídeo (o núcleo grava um por vídeo)
                 "capitulos": (pasta / "capitulos_youtube.txt").is_file(),
                 "montagem": (pasta / montagem).is_file(),
                 "montagem_arquivo": montagem if (pasta / montagem).is_file() else None,
@@ -320,6 +330,8 @@ def create_app(
 
     @app.post("/api/escolher-arquivo")
     async def api_escolher_arquivo():
+        if not trava_seletor.acquire(blocking=False):
+            return erro("O seletor de arquivos já está aberto. Procure a janela dele na barra de tarefas.", 409)
         try:
             itens = await asyncio.to_thread(escolha)
             return {"itens": itens}
@@ -327,6 +339,8 @@ def create_app(
             return erro(str(exc), 503)
         except Exception:
             return erro("Não consegui abrir o seletor de arquivos. Tente arrastar o arquivo para a janela.", 500)
+        finally:
+            trava_seletor.release()
 
     @app.post("/api/upload")
     async def api_upload(files: list[UploadFile] = File(...)):

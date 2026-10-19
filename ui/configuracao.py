@@ -45,7 +45,7 @@ CAMPOS: tuple[CampoConfig, ...] = (
     CampoConfig("shorts", "legendas", "bool", "Legendas nos shorts", "Ativa legendas nos vídeos verticais."),
     CampoConfig("shorts", "selo_jogada", "bool", "Título da jogada no short", "Mostra ACE, DOUBLE KILL e outros títulos."),
     CampoConfig("shorts", "zoom_no_abate", "bool", "Zoom a cada abate", "Aplica um zoom rápido a cada abate."),
-    CampoConfig("shorts", "marca", "texto", "Seu @ no short", "Texto discreto no topo do short e nas hashtags (vazio = sem texto).",
+    CampoConfig("shorts", "marca", "texto", "Seu @ no short", "Texto discreto no topo do short (só aparece quando o programa detecta a sua webcam) e nas hashtags (vazio = sem texto).",
                 comprimento=40, proibidos="{}\\"),
     CampoConfig("montagem", "gerar", "bool", "Gerar montagem", "Cria um vídeo com os melhores momentos."),
     CampoConfig("montagem", "ordem", "opcao", "Ordem da montagem", "Escolha como ordenar os momentos.", opcoes=("cronologica", "melhores")),
@@ -327,7 +327,7 @@ class ConfiguracaoProjeto:
             except OSError:
                 pass
             raise ErroConfig("Não consegui restaurar o padrão. O arquivo anterior foi recuperado.") from exc
-        return {"sucesso": True, "mensagem": "Padrão do programa restaurado. Vale na próxima execução."}
+        return {"sucesso": True, "mensagem": "Padrão do programa restaurado. Vale na próxima execução. Cópia do arquivo anterior em config.toml.bak."}
 
     def _gravar_atomico(self, texto: str) -> None:
         newline = "\r\n" if "\r\n" in texto else "\n"

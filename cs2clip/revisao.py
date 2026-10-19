@@ -37,7 +37,9 @@ def itens_revisao(moments: list[Moment], arquivos: dict[int, dict]) -> list[dict
     return out
 
 
-PAGE = """<title>Revisão de momentos</title>
+PAGE = """<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Revisão de momentos</title>
 <style>
 :root{--bg:#0b0d10;--surface:#15181d;--surface-2:#1c2028;--line:#262b33;--txt:#eef1f5;--mut:#8b94a1;--acc:#ffb224;
 --roxo:#9b6bff;--ok:#35d08a;--ruim:#ff5f6b;--azul:#4da3ff;color-scheme:dark}

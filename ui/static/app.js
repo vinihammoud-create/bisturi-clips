@@ -21,7 +21,8 @@
     exclusaoInicial: {},
     assinaturaFila: null,
     nomesDigitados: {},
-    logPorJob: {}
+    logPorJob: {},
+    loteMax: 0
   };
 
   const TELAS = ["inicio", "videos", "configurar", "ajuda"];
@@ -227,12 +228,19 @@
     atualizarPassos();
   }
 
+  // Enquanto o seletor nativo do Windows está aberto, novos cliques não abrem outro (o servidor também recusa: 409).
+  let seletorAberto = false;
   async function escolherArquivos() {
+    if (seletorAberto) return;
+    seletorAberto = true;
+    const botao = $("#choose-files");
+    if (botao) botao.disabled = true;
     try {
       const resposta = await api("/api/escolher-arquivo", { method: "POST", body: {} });
       (resposta.itens || []).forEach(adicionarArquivo);
       if (resposta.itens?.length) toast(`${resposta.itens.length} arquivo(s) adicionado(s).`, "success");
     } catch (erro) { toast(erro.message, "error", 5000); }
+    finally { seletorAberto = false; if (botao) botao.disabled = false; }
   }
 
   // Arrastar faz cópia: o servidor grava o arquivo uma vez na pasta temporária do Windows (disco C:) e outra em
@@ -243,8 +251,16 @@
     return `Arquivo grande (${formatarTamanho(total)}): arrastar faz uma cópia e precisa de espaço livre também no disco C:. Para lives grandes, prefira "Escolher no computador", que não copia nada.`;
   }
 
+  // Mesmas extensões de EXTENSOES_ENTRADA (ui/seguranca.py). O servidor continua estrito (415); aqui só se evita
+  // enviar horas de vídeo junto com um .txt que faria o lote inteiro ser recusado no fim.
+  const EXT_ENTRADA = new Set([".mp4", ".mkv", ".mov", ".flv", ".ts", ".webm", ".avi", ".m4v", ".mpg", ".mpeg", ".wmv", ".mts", ".m2ts", ".3gp", ".ogv", ".dem"]);
+  const extensaoDe = nome => { const i = String(nome).lastIndexOf("."); return i < 0 ? "" : String(nome).slice(i).toLowerCase(); };
+
   function enviarArquivos(arquivos) {
-    const validos = Array.from(arquivos || []);
+    const todos = Array.from(arquivos || []);
+    const validos = todos.filter(arquivo => EXT_ENTRADA.has(extensaoDe(arquivo.name)));
+    const fora = todos.filter(arquivo => !EXT_ENTRADA.has(extensaoDe(arquivo.name)));
+    if (fora.length) toast(`Ignorei ${fora.length} arquivo(s) que não são vídeo nem demo: ${fora.slice(0, 3).map(arquivo => arquivo.name).join(", ")}${fora.length > 3 ? "…" : ""}`, "error", 6000);
     if (!validos.length) return;
     const dados = new FormData();
     let total = 0;
@@ -312,12 +328,13 @@
       atualizarFila();
     } catch (erro) {
       toast(erro.message, "error", 5000);
-      if (/não encontrei|escolha-o novamente/i.test(erro.message) && state.videoAtual) {
+      // Só quando veio de "Gerar de novo"/"Aplicar" (motivo): na tela Início, um arquivo que sumiu só mostra o aviso.
+      // E só aceita o tipo do item aberto (demo ou vídeo), como localizarVideoAtual.
+      if (motivo && /não encontrei|escolha-o novamente/i.test(erro.message) && state.videoAtual) {
+        const tipo = state.dadosAtuais?.demo ? "demo" : "video";
         const escolha = await api("/api/escolher-arquivo", { method: "POST", body: {} }).catch(() => ({ itens: [] }));
-        if (escolha.itens?.length) {
-          const selecionado = escolha.itens.find(item => item.tipo === "video") || escolha.itens[0];
-          await adicionarFila([selecionado.caminho], opcoes, motivo);
-        }
+        const selecionado = (escolha.itens || []).find(item => item.tipo === tipo);
+        if (selecionado) await adicionarFila([selecionado.caminho], opcoes, motivo);
       }
     }
   }
@@ -343,7 +360,7 @@
 
   function classeEstado(estado) {
     if (estado === "pronto") return "pronto";
-    if (["erro", "com_problemas", "cancelado"].includes(estado)) return estado === "cancelado" ? "erro" : estado;
+    if (["erro", "com_problemas"].includes(estado)) return estado;   // cancelado é neutro: nada de etiqueta vermelha
     if (estado === "rodando") return "running";
     return "";
   }
@@ -424,7 +441,8 @@
     const ativo = jobs.find(job => job.id === resposta.ativo) || jobs.find(job => job.estado === "rodando") || null;
     const externo = !ativo && Boolean(resposta.externo) && (resposta.progresso || {}).estado === "rodando";
     if (ativo || externo) return { ativo, ref: ativo, externo };
-    const ruins = jobs.filter(job => ["erro", "com_problemas", "precisa_jogador"].includes(job.estado))
+    // Cancelado só entra se chegou a rodar (o cancelado ainda na fila não tem o que mostrar).
+    const ruins = jobs.filter(job => ["erro", "com_problemas", "precisa_jogador"].includes(job.estado) || (job.estado === "cancelado" && job.iniciado_em))
       .sort((a, b) => (Number(b.terminado_em) || 0) - (Number(a.terminado_em) || 0));
     return { ativo: null, ref: ruins[0] || null, externo: false };
   }
@@ -434,10 +452,16 @@
     const { ativo, ref, externo } = jobReferencia(resposta);
     const doRef = ref && ref.progresso && Object.keys(ref.progresso).length ? ref.progresso : null;
     let progresso;
-    if (ativo || externo) progresso = doRef || resposta.progresso || {};
+    // Job nosso ainda sem progresso próprio = o núcleo não começou a escrever: nada de herdar o progresso.json velho.
+    if (ativo) progresso = doRef || {};
+    else if (externo) progresso = resposta.progresso || {};
     else if (ref) progresso = doRef || {};
     else progresso = resposta.progresso || {};
     const estaRodando = Boolean(ativo && ativo.estado === "rodando") || externo;
+    // Cada arquivo é um job (o núcleo sempre vê video_total = 1): a barra geral conta os jobs do lote atual.
+    // O lote recomeça quando a fila esvazia.
+    const pendentes = jobs.filter(job => ["na_fila", "rodando"].includes(job.estado)).length;
+    state.loteMax = pendentes === 0 ? 0 : Math.max(state.loteMax || 0, pendentes);
     const erroSemJob = !ref && !estaRodando && progresso.estado === "erro";
     const mostrar = estaRodando || erroSemJob || Boolean(ref);
     $("#progress-area").classList.toggle("hidden", !mostrar);
@@ -456,8 +480,9 @@
     const porcentagem = estimadas > 0 ? Math.max(0, Math.min(100, feitas / estimadas * 100)) : 0;
     $("#video-progress").style.width = `${porcentagem}%`;
     $("#progress-count").textContent = estimadas > 0 ? `${feitas} de ${estimadas}` : "—";
-    const videoN = Number(progresso.video_n) || 1;
-    const videoTotal = Number(progresso.video_total) || Math.max(1, jobs.filter(job => ["na_fila", "rodando"].includes(job.estado)).length);
+    const usarLote = jobs.length > 0 && state.loteMax > 0;
+    const videoTotal = usarLote ? state.loteMax : (Number(progresso.video_total) || 1);
+    const videoN = usarLote ? (state.loteMax - pendentes + 1) : (Number(progresso.video_n) || 1);
     const geral = estimadas > 0 ? Math.max(0, Math.min(100, ((videoN - 1) + feitas / estimadas) / videoTotal * 100)) : 0;
     $("#overall-progress").style.width = `${geral}%`;
     $("#overall-count").textContent = `${Math.round(geral)}%`;
@@ -473,7 +498,7 @@
       // O texto do processo fica no topo; o registro (saida/log.txt) vem embaixo. Busca uma vez por job.
       if (!Object.prototype.hasOwnProperty.call(state.logPorJob, ref.id)) {
         state.logPorJob[ref.id] = [];
-        api("/api/log").then(log => { state.logPorJob[ref.id] = Array.isArray(log.linhas) ? log.linhas : []; }).catch(() => {});
+        api(`/api/log?desde=${encodeURIComponent(ref.iniciado_em || 0)}`).then(log => { state.logPorJob[ref.id] = Array.isArray(log.linhas) ? log.linhas : []; }).catch(() => {});
       }
       const linhasLog = state.logPorJob[ref.id];
       if (linhasLog.length) detalhes.push("", "— Registro de problemas (saida/log.txt) —", linhasLog.join("").trimEnd());
@@ -488,7 +513,7 @@
       renderizarFila(resposta);
       let temNovidade = false;
       state.fila.forEach(job => {
-        if (["pronto", "com_problemas", "erro"].includes(job.estado)) {
+        if (["pronto", "com_problemas", "erro"].includes(job.estado) || (job.estado === "cancelado" && job.iniciado_em)) {
           const chave = `${job.id}:${job.estado}`;
           if (!state.finalizadosVistos.has(chave)) { state.finalizadosVistos.add(chave); temNovidade = true; }
         }
@@ -668,7 +693,14 @@
     if (resposta.links?.revisao) {
       acoes.append(button("Revisão (gabarito)", "button-secondary", () => window.open(urlMidia(id, "revisao.html"), "_blank", "noopener"), null, "external"));
     }
-    acoes.append(button("Relatório", "button-secondary", () => window.open("/media-geral/relatorio.html", "_blank", "noopener"), null, "doc"));
+    // O núcleo grava um relatório por vídeo (saida/<id>/relatorio.html). Sem ele (processado antes dessa versão),
+    // cai no relatório geral, que é o da última execução e pode não conter este vídeo: o rótulo diz isso.
+    if (resposta.links?.relatorio) {
+      acoes.append(button("Relatório", "button-secondary", () => window.open(urlMidia(id, "relatorio.html"), "_blank", "noopener"), null, "doc"));
+    } else {
+      acoes.append(button("Relatório da última execução", "button-secondary", () => window.open("/media-geral/relatorio.html", "_blank", "noopener"),
+        "Relatório gerado na última execução do programa; pode não conter este vídeo", "doc"));
+    }
     acoes.append(button("Abrir pasta", "button-secondary", () => abrirPasta(id), null, "folder"));
     acoes.append(button("Gerar de novo", "button-secondary", () => reprocessarVideo("reprocessar"), "Processa este vídeo de novo", "refresh"));
   }
@@ -737,7 +769,7 @@
     $("#moments-grid").classList.toggle("hidden", Boolean(eDemo));
     $("#dirty-banner").classList.toggle("hidden", Boolean(eDemo));
     if (!eDemo) { $("#timeline-wrap").classList.remove("hidden"); return; }
-    aviso.textContent = "Demo analisada. O corte do vídeo a partir da demo chega numa próxima versão.";
+    aviso.textContent = "Demo analisada: aqui ficam o placar, os abates e os clutches. Para gerar cortes, processe também o vídeo da mesma partida (com a .dem na mesma pasta dele).";
     aviso.className = "notice notice-info";
     resumo.className = "demo-summary";
     const placar = Array.isArray(demo.placar) ? demo.placar.join(" × ") : "Não informado";
@@ -789,8 +821,13 @@
     } else {
       const faixa = el("div", "timeline-part partida"); faixa.style.left = "0%"; faixa.style.width = "100%"; timeline.append(faixa);
     }
+    // Só os momentos que os filtros deixam na lista: os outros não têm cartão para onde rolar.
+    const visiveis = new Set(filtrarMomentos(state.momentos, {
+      tipo: $("#filter-type").value, emocao: $("#filter-emotion").value, soPartidas: $("#filter-competitive").checked,
+      soAprovados: $("#filter-approved").checked, mostrarDescartados: $("#filter-excluded").checked
+    }).itens.map(item => item.indice));
     state.momentos.forEach((momento, indice) => {
-      if (momento.excluido && !$("#filter-excluded").checked) return;
+      if (!visiveis.has(indice)) return;
       const foco = Number(momento.foco ?? momento.inicio) || 0;
       const marcador = el("button", `timeline-marker ${momento.tipo === "abate" ? "abate" : "reacao"}`);
       marcador.type = "button"; marcador.style.left = `calc(${Math.max(0, Math.min(100, foco / duracao * 100))}% - 1px)`;
@@ -874,7 +911,7 @@
       if (m.excluido) {
         botoes.append(button("Restaurar", "button-secondary", () => marcarMomento(m, "restaurar"), null, "undo"));
       } else {
-        const gostei = button("Gostei", `button-like ${m.aprovado === true ? "selected" : ""}`, () => marcarMomento(m, "aprovar"), "Atalho: A", m.aprovado === true ? "check" : "like");
+        const gostei = button("Gostei", `button-like ${m.aprovado === true ? "selected" : ""}`, () => marcarMomento(m, m.aprovado === true ? "desaprovar" : "aprovar"), "Atalho: A (clique de novo para desmarcar)", m.aprovado === true ? "check" : "like");
         botoes.append(gostei, button("Descartar", "button-discard", () => marcarMomento(m, "descartar"), "Atalho: D", "trash"));
       }
       card.append(botoes); grade.append(card);
@@ -897,7 +934,8 @@
       renderizarMomentos(); montarLinhaDoTempo(); atualizarBannerAplicar();
       if (acao === "descartar") toast("Momento descartado.", "success", 5000, () => marcarMomento(momento, "restaurar"));
       else if (acao === "restaurar") toast("Momento restaurado.", "success", 5000, () => marcarMomento(momento, "descartar"));
-      else toast("Marcado como gostei.", "success");
+      else if (acao === "desaprovar") toast("Gostei removido.", "success", 5000, () => marcarMomento(momento, "aprovar"));
+      else toast("Marcado como gostei.", "success", 5000, () => marcarMomento(momento, "desaprovar"));
     } catch (erro) { toast(erro.message, "error", 5000); }
   }
 
@@ -1067,6 +1105,7 @@
 
   async function restaurarPadroes() {
     if (!state.configCampos.length) { toast("Não consegui carregar as opções de configuração.", "error"); return; }
+    if (!window.confirm("Voltar TODAS as opções ao padrão do programa?\n\nIsso apaga do config.toml o que você configurou (o @ do canal, o nome na demo, idioma, qualidade etc.).\nUma cópia do arquivo anterior fica em config.toml.bak, mas só da última alteração.")) return;
     try {
       const chaves = state.configCampos.map(campo => `${campo.secao}.${campo.chave}`);
       const resultado = await api("/api/config/padroes", { method: "POST", body: { chaves } });
@@ -1146,6 +1185,15 @@
     ["dragenter", "dragover"].forEach(nome => $("#drop-zone").addEventListener(nome, evento => { evento.preventDefault(); $("#drop-zone").classList.add("dragover"); }));
     ["dragleave", "drop"].forEach(nome => $("#drop-zone").addEventListener(nome, evento => { evento.preventDefault(); $("#drop-zone").classList.remove("dragover"); }));
     $("#drop-zone").addEventListener("drop", evento => enviarArquivos(evento.dataTransfer.files));
+    // Soltar um arquivo fora do quadro faria o Edge abrir o vídeo no lugar da interface (file:///...): barra fora dele.
+    ["dragover", "drop"].forEach(nome => document.addEventListener(nome, evento => {
+      const tipos = evento.dataTransfer ? Array.from(evento.dataTransfer.types || []) : [];
+      if (!tipos.includes("Files")) return;   // texto arrastado para dentro de um campo continua funcionando
+      evento.preventDefault();
+      const dentro = Boolean(evento.target.closest && evento.target.closest("#drop-zone"));
+      if (nome === "dragover" && evento.dataTransfer) evento.dataTransfer.dropEffect = dentro ? "copy" : "none";
+      if (nome === "drop" && !dentro) toast("Solte o arquivo no quadro do passo 1.", "error");
+    }));
     $$("#filter-type, #filter-emotion, #filter-order, #filter-competitive, #filter-approved, #filter-excluded").forEach(filtro => filtro.addEventListener("change", () => { renderizarMomentos(); montarLinhaDoTempo(); }));
     $("#back-library").addEventListener("click", () => { $("#result-view").classList.add("hidden"); $("#library-wrap").classList.remove("hidden"); mudarEndereco("#videos"); carregarBiblioteca(); });
     $("#apply-changes").addEventListener("click", () => reprocessarVideo("aplicar"));
@@ -1220,6 +1268,7 @@
   if (typeof module === "object" && module && module.exports) {
     module.exports = { state, assinaturaFila, renderizarFila, renderizarProgresso, jobReferencia, filtrarMomentos,
       posicaoParte, espacoTocaPlayer, eDemoIndice, renderizarBiblioteca, avisoEnvioGrande, marcaDoCanal, resumoPlacar, nomeVideo,
-      atualizarPassos, montarPublicar };
+      atualizarPassos, montarPublicar, montarAcoesResultado, montarLinhaDoTempo, montarDemo, enviarArquivos, escolherArquivos,
+      adicionarFila, restaurarPadroes, marcarMomento, renderizarMomentos, configurarEventos, classeEstado };
   }
 })();

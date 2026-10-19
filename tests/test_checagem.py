@@ -88,11 +88,29 @@ def test_checar_pela_linha_de_comando_nao_processa_nada(tmp_path, monkeypatch, c
     assert not (tmp_path / "s").exists()                               # --checar não cria nem toca em saida
 
 
-def test_previa_pula_o_whisper_quando_nao_ha_falas_guardadas(tmp_path, monkeypatch):
-    """Na análise de verdade (sem trocar a função): modo_previa + sem cache de falas = nunca chama o Whisper."""
+def test_previa_pula_o_whisper_quando_nao_ha_falas_guardadas(tmp_path, monkeypatch, capsys):
+    """analyze() de verdade: modo_previa + sem cache de falas = nunca chama o Whisper."""
+    import numpy as np
     import cs2clip.pipeline as pl
-    chamou = []
-    monkeypatch.setattr(pl, "transcribe_full", lambda *a, **k: chamou.append(1) or [])
-    # só a decisão importa: o trecho está em analyze(); aqui conferimos que o texto de aviso existe no código
-    fonte = open(pl.__file__, encoding="utf-8").read()
-    assert "elif cfg.modo_previa:" in fonte and "words = []" in fonte and not chamou
+    from test_r1_pipeline import _analise_falsa, _video
+
+    def rodar(previa, pasta):
+        chamou = []
+        cfg = _analise_falsa(monkeypatch, tmp_path / pasta, tem_som=True)
+        cfg.chat.usar = False
+        cfg.modo_previa = previa
+        monkeypatch.setattr(pl.aud, "load_audio", lambda p: np.zeros(16000, np.float32))
+        monkeypatch.setattr(pl.aud, "speech_segments", lambda a: [[1.0, 2.0]])
+        monkeypatch.setattr(pl.aud, "voice_curve", lambda a, s: np.zeros(int(120 / pl.aud.HOP), np.float32))
+        monkeypatch.setattr(pl, "transcribe_full", lambda *a: (chamou.append(1), [])[1])
+        monkeypatch.setattr(pl, "liberar_modelo", lambda: None)
+        monkeypatch.setattr(pl, "detect_layout", lambda *a: pl.Layout(None, None, 0.0))
+        monkeypatch.setattr(pl, "preview", lambda *a: None)
+        pl.analyze(_video(tmp_path / pasta / "in", "live.mp4"), cfg, tmp_path / pasta / "saida",
+                   tmp_path / pasta / "j")
+        return chamou
+
+    assert rodar(True, "a") == []
+    assert "prévia" in capsys.readouterr().out
+    assert not (tmp_path / "a" / "saida" / "live" / ".cache" / "falas.json").exists()
+    assert rodar(False, "b") == [1]   # espelho: prova que o falso é alcançável

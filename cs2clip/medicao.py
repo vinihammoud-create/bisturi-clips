@@ -129,7 +129,8 @@ def medir(linhas: list[Linha], momentos_por_vod: dict[str, list[dict]]) -> Relat
                 rel.metricas[cat].exemplos_fn.append(rotulo + " (o programa nem achou esse momento)")
             continue
         prog = EMOCOES.get(m.get("emocao") or "")
-        for cat in (EMOCOES.values() if ln.categorias else ()):   # sem resposta de emoção: só o abate conta
+        respondeu = ln.categorias & (set(EMOCOES.values()) | {"nenhuma"})
+        for cat in (EMOCOES.values() if respondeu else ()):   # sem resposta de emoção: só o abate conta
             met = rel.metricas[cat]
             quer = cat in ln.categorias
             if quer and prog == cat:

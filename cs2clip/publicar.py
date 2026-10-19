@@ -11,7 +11,8 @@ from pathlib import Path
 from .moments import Moment
 
 BASE = {1: "Que tiro", 2: "DOUBLE KILL", 3: "TRIPLE KILL", 4: "QUADRA KILL", 5: "ACE"}
-HASHTAGS_FIXAS = ["#CS2", "#CounterStrike2", "#Premier"]
+HASHTAGS_FIXAS = ["#CS2", "#CounterStrike2"]   # sem #Premier: o programa não sabe o modo (Faceit, Competitivo...)
+FAIXA_TXT = {"DESTAQUE": "Destaque", "PADRAO": "Padrão", "RELATORIO": "Fraco"}   # o json guarda o valor interno
 
 
 def _contexto(m: Moment) -> str:
@@ -48,7 +49,7 @@ def titulos(m: Moment) -> list[str]:
     fogo = " 🔥" if m.faixa == "DESTAQUE" else ""
     return [f"{base} {ctx}".strip() + fogo,
             f"Olha esse {base if n > 1 else 'tiro'} {ctx}".strip(),
-            f"{base} {ctx} | CS2 Premier".replace("  ", " ")]
+            f"{base} {ctx} | CS2".replace("  ", " ")]
 
 
 def _nome(marca: str) -> str:
@@ -106,7 +107,7 @@ def gerar_publicar(out: Path, video: str, shorts: list[Moment], arquivos: dict[i
     linhas = [f"Para postar — {video}", "(3 opções de título; copie a descrição inteira com as hashtags)", ""]
     for i in itens:
         linhas += [f"■ {i['short']}" + (f"   (com efeitos: {i['short_efeitos']})" if i["short_efeitos"] else ""),
-                   f"  nota {i['nota']} · {i['faixa']} · capa sugerida: {i['capa']}",
+                   f"  nota {i['nota']} · {FAIXA_TXT.get(i['faixa'], i['faixa'])} · capa sugerida: {i['capa'] or 'nenhuma'}",
                    *[f"  Título {k}: {t}" for k, t in enumerate(i["titulos"], 1)],
                    "  Descrição:", *[f"    {l}" for l in i["descricao"].splitlines()], ""]
     txt = out / "publicar.txt"

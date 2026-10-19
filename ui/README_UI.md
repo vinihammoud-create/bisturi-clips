@@ -36,15 +36,15 @@ Na primeira abertura aparece uma tela de boas-vindas que pede o @ do canal (vai 
 | GET | `/api/videos/{id}` | Momentos, partes, demo, links disponíveis e `publicar` (shorts prontos para postar) |
 | GET | `/api/progresso` | Andamento e fila |
 | GET | `/api/fila` | Estado dos itens enfileirados |
-| GET | `/api/log` | Últimas linhas de `saida/log.txt` |
+| GET | `/api/log` | Últimas linhas de `saida/log.txt`, só da execução mais recente (`?desde=` = início do job) |
 | GET | `/api/config` | Opções permitidas e valores atuais/padrão |
-| POST | `/api/escolher-arquivo` | Abre o seletor nativo do Windows |
+| POST | `/api/escolher-arquivo` | Abre o seletor nativo do Windows (um por vez; outro pedido responde 409) |
 | POST | `/api/upload` | Envia arquivos em blocos para `entrada/` |
 | POST | `/api/fila` | Adiciona arquivos à fila |
 | POST | `/api/fila/cancelar-tudo` | Cancela a fila e o processo ativo |
 | POST | `/api/fila/{id}/cancelar` | Cancela um item |
 | POST | `/api/fila/{id}/jogador` | Informa o nome para tentar a demo de novo |
-| POST | `/api/videos/{id}/momento` | Aprova, descarta ou restaura um momento |
+| POST | `/api/videos/{id}/momento` | Aprova, desaprova, descarta ou restaura um momento |
 | POST | `/api/config` | Salva opções permitidas |
 | POST | `/api/config/padroes` | Remove opções explícitas para voltar aos padrões do núcleo |
 | POST | `/api/abrir-pasta` | Abre `saida/` ou uma pasta de vídeo no Explorer |
@@ -78,7 +78,6 @@ Os testes usam pastas `saida/` falsas, arquivos pequenos e um processo simulado.
 ## Limites conhecidos
 
 - **Revisado e testado com o programa real em 17/10/2026** (fila com processo de verdade, cancelamento, leitura do andamento, edição do `momentos.json` real, página de revisão aberta no Edge). A versão original foi escrita sem acesso ao programa; a revisão corrigiu: página `revisao.html` quebrada pela política de segurança, detecção de processo vivo errada no Windows (`os.kill(pid, 0)`), cancelamento sem plano B, e acrescentou o modo prévia, `--forcar-gpu` e o botão "Verificar meu computador".
-- Fechar a janela do app **não** encerra o servidor: feche também a janela preta do `iniciar.bat` (ou Ctrl+C nela).
+- Fechar a janela do app **não** encerra o servidor: feche também a janela preta do `iniciar.bat` (ou Ctrl+C nela). Abrir o atalho de novo com o servidor ainda ativo só reabre a janela nele (procura em 8765-8775); não sobe um segundo servidor.
 - O envio de arquivos grandes pelo navegador passa por uma cópia temporária do servidor antes de ir para `entrada/` (usa o dobro do espaço por um instante). Para vídeos grandes prefira **Escolher no computador**, que não copia nada.
-- A ação "Gostei" só liga a marca; não há botão para desmarcar.
 - Abrir o Explorer e o Edge são funções do Windows: valide à mão.

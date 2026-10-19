@@ -171,13 +171,14 @@ def test_cancelar_encerra_processo_e_define_mensagem(tmp_path, taskkill_falso):
         job = manager.adicionar(arquivo, {})
         assert aguardar(manager, lambda: manager.listar()["ativo"] == job["id"] and len(processos) == 1)
         item = manager.cancelar(job["id"])
-        assert item["estado"] == "erro"
+        assert item["estado"] == "cancelado"   # cancelar não é erro: sem etiqueta vermelha
         assert processos[0].terminated is True
         if os.name == "nt":   # foi o taskkill falso, nunca o de verdade
             assert ["taskkill", "/PID", str(processos[0].pid), "/T", "/F"] in taskkill_falso
         assert aguardar(manager, lambda: manager.listar()["ativo"] is None)
         final = next(j for j in manager.listar()["itens"] if j["id"] == job["id"])
         assert final["mensagem"] == "Cancelado."
+        assert final["estado"] == "cancelado"
     finally:
         manager.encerrar()
 

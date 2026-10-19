@@ -65,6 +65,7 @@ class Moment:
     segmentos: list[tuple[float, float]] = field(default_factory=list)
     faixa: str = ""                  # DESTAQUE | PADRAO | RELATORIO (cs2clip/nota.py)
     pedido: bool = False             # o streamer falou "clipa isso" (cs2clip/comando.py)
+    clutch: tuple[int, bool] | None = None   # (inimigos, ganhou): só com a demo da partida (cs2clip/sincronizar.py)
 
     @property
     def janelas(self) -> list[tuple[float, float]]:
@@ -172,8 +173,9 @@ def build_moments(events: list[Event], V: np.ndarray, C: np.ndarray | None, T: n
                 cands += [(t, v * w) for t, v in find_peaks(curve, th, 0.3, 20.0)]
         reac: list[Moment] = []
         for t, _ in sorted(cands, key=lambda p: -p[1]):
-            if t < 90 or t > duration - 30 or any(a <= t <= b for a, b in busy):
-                continue  # ignora abertura/encerramento da live
+            if (t < min(90.0, 0.05 * duration) or t > duration - min(30.0, 0.03 * duration)
+                    or any(a <= t <= b for a, b in busy)):
+                continue  # ignora abertura/encerramento da live (a margem encolhe em vídeo curto)
             m = Moment(max(0.0, t - 8.0), min(duration, t + 4.0), "reacao", label="REAÇÃO", pico=t)
             e = _excitement(m, V, C, T, m.start, m.end)
             if m.voice < 0.3 and m.chat < 0.3:
@@ -206,7 +208,8 @@ def escolher_shorts(moments: list[Moment], nota_short: float, quantidade: int,
     """Quais momentos viram short: as melhores notas (>= `nota_short`), mas `reserva_emocao` das
     `quantidade` vagas ficam para os melhores momentos com emoção (confiança alta primeiro), mesmo
     com nota abaixo do corte (desde que >= NOTA_MIN_EMOCAO). Sem emoção suficiente, as vagas
-    reservadas voltam para as melhores notas. Devolve em ordem de nota, maior primeiro."""
+    reservadas voltam para as melhores notas. Reação sem emoção não vira short (mesma regra da montagem).
+    Devolve em ordem de nota, maior primeiro."""
     if quantidade <= 0:
         return []
     # "clipa isso" falado na live: vaga garantida (antes das reservas de emoção)
@@ -216,7 +219,9 @@ def escolher_shorts(moments: list[Moment], nota_short: float, quantidade: int,
                         key=lambda m: (m.confianca != "alta", -m.score))
     reservados = pedidos + emocionais[:max(0, min(reserva_emocao, quantidade - len(pedidos)))]
     nomes = {id(m) for m in reservados}
-    resto = sorted((m for m in moments if m.score >= nota_short and id(m) not in nomes), key=lambda m: -m.score)
+    # reação sem emoção é conversa: não vira short (mesma regra da montagem, `keep` de pipeline.render_all)
+    resto = sorted((m for m in moments if m.score >= nota_short and id(m) not in nomes
+                    and (m.kind == "abate" or m.emocao)), key=lambda m: -m.score)
     escolhidos = reservados + resto[:quantidade - len(reservados)]
     return sorted(escolhidos, key=lambda m: -m.score)
 

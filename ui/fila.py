@@ -10,6 +10,7 @@ import threading
 import time
 import uuid
 from collections import deque
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -132,6 +133,20 @@ class GerenciadorFila:
         except (OSError, json.JSONDecodeError, UnicodeError):
             return {}
 
+    def _progresso_do_job(self, job: dict[str, Any]) -> dict[str, Any]:
+        """O progresso.json só vale para o job se foi gravado por uma execução iniciada depois dele começar.
+        Até o núcleo escrever o seu (imports, config...), o arquivo ainda é o da execução anterior: nome do
+        vídeo velho, barra cheia. Compara iniciado_em (o pid do venv no Windows não é o do Popen)."""
+        progresso = self._ler_progresso()
+        inicio = job.get("iniciado_em")
+        if not progresso or not inicio:
+            return {}
+        try:
+            gravado = datetime.fromisoformat(str(progresso.get("iniciado_em"))).timestamp()
+        except (ValueError, TypeError, OverflowError, OSError):
+            return {}
+        return progresso if gravado >= inicio - 1 else {}   # -1 s: o núcleo grava o horário sem fração
+
     def _detectar_processo_externo(self) -> dict[str, Any] | None:
         progresso = self._ler_progresso()
         if progresso.get("estado") == "rodando" and pid_vivo(progresso.get("pid")):
@@ -222,7 +237,7 @@ class GerenciadorFila:
         if para is not None:
             para_publico = next((j for j in jobs if j["id"] == ativo), None)
             if para_publico is not None:
-                para_publico["progresso"] = progresso
+                para_publico["progresso"] = self._progresso_do_job(para)
                 para_publico["detalhes"] = list(para["detalhes"])
         return {"itens": jobs, "ativo": ativo, "progresso": progresso, "externo": externo}
 
@@ -314,7 +329,7 @@ class GerenciadorFila:
             with self._lock:
                 cancelado = job.get("cancelando", False)
                 job["detalhes"] = list(buffer)
-                job["progresso"] = self._ler_progresso()
+                job["progresso"] = self._progresso_do_job(job)
                 pid = getattr(processo, "pid", None)
             if cancelado:
                 self._encerrar_processo(processo, pid)
@@ -340,7 +355,7 @@ class GerenciadorFila:
             job["terminado_em"] = time.time()
             job.pop("cancelando", None)
             if cancelado:
-                job["estado"] = "erro"
+                job["estado"] = "cancelado"
                 job["mensagem"] = "Cancelado."
                 progresso_path = self.saida / "progresso.json"
                 try:
@@ -412,7 +427,7 @@ class GerenciadorFila:
                 processo = self._active_process
                 if processo is not None:
                     self._encerrar_processo(processo, getattr(processo, "pid", None))
-                job["estado"] = "erro"
+                job["estado"] = "cancelado"
                 job["mensagem"] = "Cancelado."
             else:
                 raise ValueError("Esse item já terminou.")

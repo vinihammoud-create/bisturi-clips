@@ -45,6 +45,7 @@ from .report import entry
 from .revisao import gerar_revisao, itens_revisao
 from .rounds import RoundCollector, carregar_rounds, criar_ocr, salvar_rounds, scan_rounds
 from .scan import probe, scan_video, scan_video_fast
+from .sincronizar import clutch_do_momento, integrar
 from .tools import gravar_atomico, imread, imwrite
 from .transcribe import Word, hype_curve, hype_terms, transcribe_full, liberar_modelo
 
@@ -72,10 +73,11 @@ class Step:
         progresso.etapa_feita()
 
 
-DETECTOR_VERSAO = "6"  # sobe quando detect/scan mudam o que vai para o cache (v5: coletor também lê o banner escuro, 17/10/2026)
+DETECTOR_VERSAO = "7"  # sobe quando detect/scan mudam o que vai para o cache (v5: coletor também lê o banner escuro, 17/10/2026)
+# v7 (18/10/2026): o coletor lê também a VITÓRIA azul do CT (antes ~1 em cada 6 rounds ficava sem banner)
 # v6 (17/10/2026): regiões tiradas da área do jogo (barras pretas). Só muda vídeo COM barras: sem barras a varredura
 # é idêntica, então o cache dessas versões continua valendo
-VERSOES_SEM_BARRAS = ("5",)
+VERSOES_SEM_BARRAS: tuple[str, ...] = ()   # v5 e v6 não leem a vitória azul: varrem de novo
 
 
 def _nome_recorte(t: float, usados: set[str]) -> str:
@@ -297,6 +299,31 @@ def _termos_nas_janelas(words: list[Word], m: Moment) -> list[str]:
     return termos
 
 
+def _resumo_sincronia(relatorio: list[dict]) -> str:
+    """Uma linha por demo para o terminal: usada (e o quanto mudou) ou por que ficou de fora."""
+    partes = []
+    for r in relatorio:
+        if not r.get("usada"):
+            partes.append(f"{r['demo'][-24:]}: não usada ({r.get('motivo', '')})")
+            continue
+        partes.append(f"{r['mapa']} {r['placar'][0]}x{r['placar'][1]}: {r['casados']}/{r['total_demo']} abates casados, "
+                      f"deslocamento {r['deslocamento']:+.1f} s, rounds {r['rounds_video']}→{r['rounds_demo']}, "
+                      f"{r['abates_recuperados']} abate(s) recuperado(s), {r['abates_falsos_removidos']} falso(s) removido(s)")
+    return "; ".join(partes)
+
+
+def _marcar_clutches(moments: list[Moment], clutches: list) -> None:
+    for m in moments:
+        if m.kind != "abate" or not m.kills:
+            continue
+        c = clutch_do_momento(m.kills, clutches)
+        if c is None:
+            continue
+        m.clutch = c
+        if c[1] and len(m.kills) < 5:   # ACE continua ACE; o resto vira CLUTCH 1vX
+            m.label = f"CLUTCH 1v{c[0]}"
+
+
 def _miniatura(src: str, foco: float, duracao: float, tmp: Path) -> None:
     """Quadro logo depois do abate. Abate nos últimos décimos do vídeo pediria um instante depois do fim (o
     ffmpeg não gera quadro nenhum): o instante fica preso antes do fim."""
@@ -307,9 +334,10 @@ def _miniatura(src: str, foco: float, duracao: float, tmp: Path) -> None:
 
 
 def analyze(path: Path, cfg: Config, out_root: Path, player_dir: Path,
-            refazer: frozenset[str] | bool = frozenset()):
+            refazer: frozenset[str] | bool = frozenset(), demos: list | None = None):
     """Análise completa de um vídeo. Retorna (info, nome, pasta, momentos, palavras, layout).
-    `refazer`: etapas que ignoram o cache (ver `refazer.py`); True = todas."""
+    `refazer`: etapas que ignoram o cache (ver `refazer.py`); True = todas.
+    `demos`: [(PartidaDemo, nome do arquivo)] das partidas que estão no vídeo (cs2clip/sincronizar.py)."""
     R = parse_refazer(refazer)
     info = probe(str(path))
     vod = vod_id_from_name(str(path))
@@ -353,6 +381,15 @@ def analyze(path: Path, cfg: Config, out_root: Path, player_dir: Path,
     st = Step("Lendo as suas mortes (painel \"matou você\")")
     mortes = mortes_cached(cache, str(path), info, cfg.deteccao.processos, "mortes" in R, area)
     st.done(f"{len(mortes)} mortes")
+
+    rounds = carregar_rounds(cache) or []
+    fusao = None
+    if demos:   # a demo da partida corrige abates, mortes e rounds com os fatos exatos (nada é gravado no cache)
+        st = Step("Cruzando com a demo da partida")
+        fusao = integrar(demos, events, mortes, rounds, info.duration)
+        events, mortes, rounds = fusao.events, fusao.mortes, fusao.rounds
+        gravar_atomico(out / "sincronia.json", json.dumps(fusao.relatorio, ensure_ascii=False, indent=1))
+        st.done(_resumo_sincronia(fusao.relatorio))
 
     audio_pcm: list = []  # carregado só se voz ou falas precisarem (decodificar o áudio leva tempo)
 
@@ -427,9 +464,8 @@ def analyze(path: Path, cfg: Config, out_root: Path, player_dir: Path,
     st.done(f"{sum(m.kind == 'abate' for m in moments)} jogadas, {sum(m.kind == 'reacao' for m in moments)} reações")
 
     st = Step("Dividindo em partidas e rounds, e lendo a emoção")
-    rounds = carregar_rounds(cache) or []
     abates_t = [e.t for e in events if e.kind == "kill"]
-    partes = dividir_partes(rounds, abates_t, info.duration)
+    partes = dividir_partes(rounds, abates_t, info.duration, exatos=fusao.exatos if fusao else None)
     antes_n = len(moments)
     moments = unir_sequencias(moments, partes, cfg.cortes, words, info.duration, mortes)   # abates do round = 1 corte
     unidas = antes_n - len(moments)   # antes de entrarem fails e comandos, que mudam o total
@@ -442,6 +478,8 @@ def analyze(path: Path, cfg: Config, out_root: Path, player_dir: Path,
             m.idx = i
     for m in moments:
         m.hype_words = _termos_nas_janelas(words, m)   # só as janelas que o render mostra
+    if fusao is not None:   # clutch 1vX: só a demo sabe
+        _marcar_clutches(moments, fusao.clutches)
     anotar(moments, partes, voice, words, abates_t, cfg.cortes.limiar_reacao, mortes)
     pontuar_todos(moments, partes, cfg.cortes.limiar_reacao)   # nota 0-99 explicável + faixa
     gravar_partes(out, partes, name, info.duration)
@@ -493,8 +531,10 @@ def render_all(path: Path, cfg: Config, info, name: str, out: Path, moments: lis
     moments = elegiveis(moments, c.so_partidas)  # só partidas competitivas viram corte, montagem e short
     fora_de_partida = len(todos) - len(moments)
     descartados = chaves_excluidas(out / "momentos.json")
+    descartados_m: list[Moment] = []   # fora de tudo, mas o corte e a miniatura que já existem ficam (dá para rever/restaurar)
     if descartados:   # o que o usuário descartou na revisão (interface ou momentos.json) não é renderizado
         antes = len(moments)
+        descartados_m = [m for m in moments if chave_do_momento(m) in descartados]
         moments = [m for m in moments if chave_do_momento(m) not in descartados]
         if antes != len(moments):
             print(f"    ({antes - len(moments)} momento(s) que você descartou na revisão não foram renderizados)")
@@ -671,7 +711,8 @@ def render_all(path: Path, cfg: Config, info, name: str, out: Path, moments: lis
 
     # arquivos de execuções anteriores que deixaram de valer (numeração mudou, momento descartado, short que saiu
     # do top) confundem a pasta e a interface: só os do programa (nome "NN_...") e só os que não valem mais
-    validos = ({clips_dir / f"{fname(m)}.mp4" for m in moments} | {thumbs_dir / f"{fname(m)}.jpg" for m in moments}
+    validos = ({clips_dir / f"{fname(m)}.mp4" for m in moments + descartados_m}
+               | {thumbs_dir / f"{fname(m)}.jpg" for m in moments + descartados_m}
                | {shorts_dir / f"{fname(m)}_vertical.mp4" for m in best}
                | {shorts_dir / f"{fname(m)}_vertical_efeitos.mp4" for m in best if _tem_efeitos(m, cfg)})
     # shorts desligados (--sem-shorts): os shorts já prontos continuam valendo, nada é apagado em shorts/
@@ -681,8 +722,10 @@ def render_all(path: Path, cfg: Config, info, name: str, out: Path, moments: lis
         print(f"    ({velhos} arquivo(s) de análises anteriores que não valem mais foram apagados)")
 
     arquivos = {}
-    for m in moments:
-        tem_short = m in best or not cfg.shorts.gerar   # desligados: vale o short que já existe
+    ids_descartados = {id(m) for m in descartados_m}
+    for m in moments + descartados_m:
+        # descartado não tem short (os dele são apagados acima); desligados: vale o short que já existe
+        tem_short = id(m) not in ids_descartados and (m in best or not cfg.shorts.gerar)
         achados = {"corte": clips_dir / f"{fname(m)}.mp4",
                    "short": shorts_dir / f"{fname(m)}_vertical.mp4" if tem_short else None,
                    "short_efeitos": (shorts_dir / f"{fname(m)}_vertical_efeitos.mp4"

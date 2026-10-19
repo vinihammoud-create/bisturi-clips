@@ -28,7 +28,7 @@ def test_fail_e_raiva_tem_modelos_proprios():
 
 def test_hashtags_sem_repetir_e_com_a_marca():
     tags = hashtags(jogada(5, hs=True, motivos=["match point (+10)"]), "@drd0llar")
-    assert tags[:4] == ["#CS2", "#CounterStrike2", "#Premier", "#drd0llar"]
+    assert tags[:3] == ["#CS2", "#CounterStrike2", "#drd0llar"]
     assert {"#ace", "#multikill", "#headshot", "#matchpoint", "#shorts"} <= set(tags) and len(tags) == len(set(tags))
 
 

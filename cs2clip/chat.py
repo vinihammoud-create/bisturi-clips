@@ -23,6 +23,7 @@ from .audio import HOP
 from .tools import ROOT
 
 CLI = ROOT / "bin" / "TwitchDownloaderCLI.exe"
+CHAT_TIMEOUT_S = 900   # chat de VOD de várias horas demora; mais que isso é API travada
 
 BOTS = {"nightbot", "streamelements", "streamlabs", "moobot", "fossabot", "wizebot", "soundalerts",
         "sery_bot", "botisimo", "kofistreambot", "creatisbot", "pokemoncommunitygame", "own3d"}
@@ -59,9 +60,15 @@ def download_chat(vod_id: str, out_json: Path) -> bool:
     # reaproveitado como "pronto" em toda análise seguinte
     tmp = out_json.with_name(f"{out_json.stem}.tmp{out_json.suffix}")
     for _ in range(2):  # a API às vezes devolve resposta vazia: tenta de novo
-        r = subprocess.run([str(CLI), "chatdownload", "--id", vod_id, "-o", str(tmp),
-                            "--collision", "Overwrite"],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        try:
+            r = subprocess.run([str(CLI), "chatdownload", "--id", vod_id, "-o", str(tmp),
+                                "--collision", "Overwrite"],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=CHAT_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            tmp.unlink(missing_ok=True)
+            print(f"    [chat] chat indisponível: o download do VOD {vod_id} passou de {CHAT_TIMEOUT_S} s.")
+            return False   # sem segunda tentativa: a API travou
         if r.returncode == 0 and tmp.exists() and _json_valido(tmp):
             os.replace(tmp, out_json)
             return True

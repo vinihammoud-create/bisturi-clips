@@ -13,7 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .moments import BASE, Event, Moment, _label
+from .moments import Event, Moment, _label
+from .nota import pontuar
 
 TICKRATE = 64.0            # CS2 em servidor oficial; o cabeçalho da demo não informa
 CLUTCH_MIN_INIMIGOS = 2    # 1v2 ou mais conta como clutch (1v1 é só um duelo)
@@ -276,18 +277,9 @@ def momentos_da_demo(partida: PartidaDemo, antes: float = 4.0, depois: float = 2
         eventos = [Event(round(a.t + deslocamento, 3), "kill", a.icones) for a in g]
         m = Moment(trechos[0][0], trechos[-1][1], "abate", kills=eventos, label=_label(eventos))
         m.segmentos = trechos if len(trechos) > 1 else []
-        n = min(len(g), 5)
-        m.add(BASE[n], f"{len(g)} abate(s) no round")
-        m.add(3 * sum(a.headshot for a in g), "headshot(s)")
-        m.add(8 * sum(a.parede for a in g), "através da parede")
-        m.add(15 * sum(a.sem_mira for a in g), "sem mira")
-        m.add(5 * sum(a.fumaca for a in g), "através da fumaça")
-        m.add(5 * sum(a.cego for a in g), "atirando cego")
-        if len(g) >= 2 and (g[-1].t - g[0].t) <= 2.5 * (len(g) - 1):
-            m.add(10, "sequência rápida")
         c = clutches.get(n_round)
         if c and any(a.t >= c.t for a in g):
-            m.add(15 + 10 * (c.inimigos - 1) if c.ganhou else 5, f"clutch 1v{c.inimigos}" + (" ganho" if c.ganhou else ""))
+            m.clutch = (c.inimigos, c.ganhou)   # a nota (cs2clip/nota.py) pesa o clutch
             if c.ganhou and len(g) < 5:
                 m.label = f"CLUTCH 1v{c.inimigos}"
         m.round_n = n_round
@@ -295,6 +287,7 @@ def momentos_da_demo(partida: PartidaDemo, antes: float = 4.0, depois: float = 2
         if rd and lado:
             m.round_resultado = "vitoria" if rd.vencedor == lado else "derrota"
         m.parte, m.parte_tipo = partida.titulo, "partida"
+        pontuar(m, [])   # mesma nota 0-99 e faixa dos momentos do vídeo (sem partes: sem bônus de pistol/match point)
         saida.append(m)
     for i, m in enumerate(saida, 1):
         m.idx = i

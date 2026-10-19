@@ -204,7 +204,7 @@ def test_versao_do_detector_sem_barras_continua_valendo():
     area = (160, 0, 960, 720)
     assert pl._versao_cache(None) == pl.DETECTOR_VERSAO                # sem barras: o arquivo de sempre
     assert pl._versao_vale(pl.DETECTOR_VERSAO, None) and pl._versao_vale(pl._versao_cache(area), area)
-    assert pl._versao_vale("5", None)
+    assert not pl._versao_vale("5", None) and not pl._versao_vale("6", None)   # v7 lê a vitória azul: varre de novo
     assert not pl._versao_vale("5", area)
     assert not pl._versao_vale("4", None)
     assert not pl._versao_vale(pl.DETECTOR_VERSAO, area)               # varrido sem barras, agora com barras

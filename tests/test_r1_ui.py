@@ -275,22 +275,36 @@ class Elem {
 }
 const cache = new Map();
 const document = {
-  activeElement: null, createElement: t => new Elem(t), addEventListener() {}, querySelectorAll: () => [],
+  activeElement: null, createElement: t => new Elem(t), ouvintes: {}, querySelectorAll: () => [],
+  addEventListener(t, f) { (document.ouvintes[t] = document.ouvintes[t] || []).push(f); },
   querySelector: s => { if (!cache.has(s)) cache.set(s, new Elem("div")); return cache.get(s); }
 };
 const acharTag = (no, tag, out = []) => { if (no.tagName === tag) out.push(no); no.children.forEach(f => acharTag(f, tag, out)); return out; };
 const textoDe = no => [no.textContent, ...no.children.map(textoDe)].join(" ");
 const fetches = [];
-const fetch = async url => { fetches.push(url); return { ok: true, headers: { get: () => "application/json" }, json: async () => ({ linhas: ["linha do log\n"] }) }; };
+// cfg.fetch (opcional): o cenário troca a resposta do servidor; XHR.todos guarda os envios por arrastar.
+const cfg = { fetch: null };
+const fetch = async (url, opcoes) => {
+  fetches.push(url);
+  if (cfg.fetch) return cfg.fetch(url, opcoes);
+  return { ok: true, headers: { get: () => "application/json" }, json: async () => ({ linhas: ["linha do log\n"] }) };
+};
+class XHR {
+  constructor() { XHR.todos.push(this); this.upload = { addEventListener() {} }; }
+  open() {} setRequestHeader() {} addEventListener() {} send(d) { this.enviado = d; }
+}
+XHR.todos = [];
+const win = { setTimeout, setInterval, clearInterval, abertas: [], confirmacoes: [], respostaConfirm: true, scrollTo() {},
+  open(...a) { win.abertas.push(a); }, confirm(m) { win.confirmacoes.push(m); return win.respostaConfirm; } };
 const mod = { exports: {} };
-const ctx = { module: mod, document, window: { setTimeout, setInterval, clearInterval }, console, Headers, fetch, setTimeout };
+const ctx = { module: mod, document, window: win, console, Headers, FormData, XMLHttpRequest: XHR, fetch, setTimeout };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), ctx);
 const $ = s => document.querySelector(s);
 const espera = () => new Promise(r => setTimeout(r, 15));
 const corpo = fs.readFileSync(process.argv[3], "utf8");
-const cenario = new Function("ui", "document", "$", "acharTag", "textoDe", "fetches", "espera", "return (async () => {" + corpo + "})();");
-cenario(mod.exports, document, $, acharTag, textoDe, fetches, espera)
+const cenario = new Function("ui", "document", "$", "acharTag", "textoDe", "fetches", "espera", "win", "cfg", "XHR", "return (async () => {" + corpo + "})();");
+cenario(mod.exports, document, $, acharTag, textoDe, fetches, espera, win, cfg, XHR)
   .then(r => process.stdout.write(JSON.stringify(r)))
   .catch(e => { console.error(e && e.stack || e); process.exit(1); });
 """
