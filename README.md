@@ -63,7 +63,7 @@ Sem enviar nada para a internet, sem assinatura, sem marca d'água de terceiros.
 
 ## 🎮 Como usar
 
-**1. Abra o programa** pelo atalho. Na primeira vez ele pergunta o @ do seu canal (vai nas hashtags e, quando a webcam é detectada, no topo dos shorts).
+**1. Abra o programa** pelo atalho. Abre só a janela do Bisturi Clips, sem tela preta de comandos; para sair, é só fechar a janela (se houver um processamento em andamento, ele termina o trabalho antes de encerrar). Na primeira vez ele pergunta o @ do seu canal (vai nas hashtags e, quando a webcam é detectada, no topo dos shorts).
 
 <p align="center">
   <img src="docs/img/tela_boasvindas_pc.png" alt="Tela de boas-vindas" width="720">

@@ -33,6 +33,7 @@ from .seguranca import (
     nome_arquivo_seguro,
     novo_token,
     origin_permitida,
+    python_de_console,
 )
 
 
@@ -68,7 +69,7 @@ def _executar_checagem(raiz: Path) -> dict[str, Any]:
     if os.name == "nt":
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     try:
-        r = subprocess.run([sys.executable, "-m", "cs2clip", "--checar"], cwd=str(raiz), env=ambiente, shell=False,
+        r = subprocess.run([str(python_de_console()), "-m", "cs2clip", "--checar"], cwd=str(raiz), env=ambiente, shell=False,
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120, **kwargs)
     except (OSError, subprocess.SubprocessError):
         return {"codigo": 1, "texto": "Não consegui rodar a verificação. Confira se o programa foi instalado (instalar.bat)."}
@@ -223,6 +224,10 @@ def create_app(
     app.state.dados = dados
     app.state.fila = fila
     app.state.configuracao = configuracao
+    app.state.ultima_atividade = time.monotonic()    # última vez que a página falou com o servidor (ela pergunta a cada 1 s)
+    app.state.janela_fechada_em = None               # a página avisou que foi fechada (volta a None se ela voltar)
+    app.state.ultima_midia = 0.0                     # último vídeo/relatório servido (janelas de relatório abertas à parte)
+    app.state.pedir_saida = False                    # botão "Encerrar o programa"
 
     @app.middleware("http")
     async def proteger_requisicao(request: Request, call_next):
@@ -236,6 +241,11 @@ def create_app(
             informado = request.headers.get("x-token", "")
             if not informado or not secrets_compare(informado, app.state.token):
                 return JSONResponse({"erro": "A sessão expirou ou o pedido não é válido. Atualize a página."}, status_code=403)
+        if request.url.path.startswith("/api/") and request.url.path != "/api/janela-fechada":
+            app.state.ultima_atividade = time.monotonic()
+            app.state.janela_fechada_em = None       # a página voltou (ex.: atualizou com F5)
+        if request.url.path.startswith(("/media/", "/media-geral/")):
+            app.state.ultima_midia = time.monotonic()    # um relatório aberto à parte ainda está tocando vídeo
         resposta = await call_next(request)
         resposta.headers["X-Content-Type-Options"] = "nosniff"
         caminho = request.scope.get("path", "")
@@ -554,6 +564,21 @@ def create_app(
         except (OSError, PermissionError):
             return erro("Não consegui guardar que você já viu as boas-vindas.", 500)
         return {"sucesso": True}
+
+    @app.post("/api/janela-fechada")
+    async def api_janela_fechada():
+        # A página manda isto ao ser fechada. Se ela não voltar logo (F5 volta), o programa encerra sozinho,
+        # a não ser que haja processamento (ui/__main__.py, vigia_encerramento).
+        app.state.janela_fechada_em = time.monotonic()
+        return {"sucesso": True}
+
+    @app.post("/api/encerrar")
+    async def api_encerrar():
+        """Botão "Encerrar o programa": cancela o que estiver rodando e pede ao servidor para sair."""
+        if fila.esta_processando():
+            fila.cancelar_tudo()
+        app.state.pedir_saida = True
+        return {"sucesso": True, "mensagem": "Programa encerrado. Pode fechar esta janela."}
 
     @app.post("/api/checar")
     async def api_checar():

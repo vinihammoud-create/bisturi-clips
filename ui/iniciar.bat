@@ -15,7 +15,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Iniciando o Bisturi Clips...
+echo Iniciando o Bisturi Clips... ^(versao com console, para diagnostico: o atalho da Area de Trabalho abre sem esta janela^)
 echo O navegador sera aberto em uma janela de aplicativo do Edge, se ele estiver instalado.
 echo Mantenha esta janela aberta. Para parar o servidor, pressione Ctrl+C aqui.
 "%PYTHON%" -m ui

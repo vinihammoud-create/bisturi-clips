@@ -1245,7 +1245,33 @@
     });
   }
 
+  // Fechar a janela avisa o servidor, que encerra o programa em alguns segundos (a janela preta não existe mais).
+  // `keepalive` deixa o pedido sair mesmo com a página sendo descarregada; atualizar com F5 volta antes do prazo.
+  function avisarJanelaFechada() {
+    try { fetch("/api/janela-fechada", { method: "POST", keepalive: true, headers: { "X-Token": token } }); } catch (erro) { /* sem servidor: nada a fazer */ }
+  }
+
+  async function encerrarPrograma() {
+    if (!window.confirm("Encerrar o Bisturi Clips agora?\n\nSe houver um processamento em andamento, ele será cancelado.")) return;
+    try { await api("/api/encerrar", { method: "POST", body: {} }); } catch (erro) { /* o servidor pode sair antes de responder */ }
+    if (state.timerFila) window.clearInterval(state.timerFila);
+    const principal = document.createElement("main");
+    principal.style.cssText = "min-height:100vh;display:grid;place-items:center;text-align:center;padding:24px";
+    const bloco = document.createElement("div");
+    const titulo = document.createElement("h1");
+    titulo.textContent = "Bisturi Clips encerrado";
+    const texto = document.createElement("p");
+    texto.textContent = "Pode fechar esta janela. Para voltar, abra o atalho de novo.";
+    bloco.append(titulo, texto);
+    principal.append(bloco);
+    document.body.replaceChildren(principal);
+    window.setTimeout(() => { try { window.close(); } catch (erro) { /* a janela do app pode não deixar: o aviso fica na tela */ } }, 800);
+  }
+
   async function inicializar() {
+    window.addEventListener("pagehide", avisarJanelaFechada);
+    const sair = $("#quit-app");
+    if (sair) sair.addEventListener("click", encerrarPrograma);
     configurarEventos();
     renderizarArquivosEscolhidos();
     seguirEndereco();

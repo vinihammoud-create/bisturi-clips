@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import secrets
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -102,3 +103,14 @@ def caminho_biblioteca_seguro(base_saida: Path, relativo: str) -> Path:
     if not alvo.is_file():
         raise FileNotFoundError("Arquivo não encontrado.")
     return alvo
+
+
+def python_de_console() -> Path:
+    """O Python para rodar o núcleo (`cs2clip`) e a checagem. A interface abre com o pythonw.exe (sem janela
+    preta), mas o processo filho precisa do python.exe: o pythonw não tem saída para o programa ler o andamento."""
+    atual = Path(sys.executable)
+    if atual.name.lower() == "pythonw.exe":
+        irmao = atual.with_name("python.exe")
+        if irmao.is_file():
+            return irmao
+    return atual

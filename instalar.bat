@@ -148,7 +148,12 @@ echo.
 echo Pronto! Abra o "Bisturi Clips" pelo atalho na Area de Trabalho.
 choice /c SN /n /m "Abrir agora? [S/N] "
 if errorlevel 2 exit /b 0
-start "" "ui\iniciar.bat"
+rem pythonw: abre so a janela do app, sem a janela preta
+if exist ".venv\Scripts\pythonw.exe" (
+  start "" ".venv\Scripts\pythonw.exe" -m ui
+) else (
+  start "" "ui\iniciar.bat"
+)
 exit /b 0
 
 :falhou

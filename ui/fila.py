@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from .seguranca import EXTENSOES_ENTRADA
+from .seguranca import EXTENSOES_ENTRADA, python_de_console
 
 
 VIDEO_EXTS = EXTENSOES_ENTRADA - {".dem"}
@@ -83,7 +83,7 @@ def construir_argumentos(
 
     raiz = raiz.resolve()
     # O mesmo Python que já rodou a interface (e a checagem): serve para .venv, Python global ou outra pasta.
-    python = python_exe or Path(sys.executable)
+    python = python_exe or python_de_console()
     argumentos = [str(python), "-m", "cs2clip"]
     argumentos.extend(str(arquivo.resolve()) for arquivo in arquivos)
     argumentos.extend(["--saida", str((raiz / "saida").resolve())])
@@ -398,7 +398,8 @@ class GerenciadorFila:
         if os.name == "nt" and pid:
             try:
                 resultado = subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], shell=False, check=False,
-                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10,
+                                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))   # sem janela
                 if resultado.returncode == 0:
                     return
                 # o taskkill não conseguiu (processo já saiu, acesso negado...): tenta o jeito do Python
