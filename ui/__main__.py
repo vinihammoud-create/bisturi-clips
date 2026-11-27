@@ -15,6 +15,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 PORTA_PADRAO = 8765
+PRAZO_ENCERRAR_CONEXOES_S = 3   # ao encerrar, conexao ainda aberta depois disto e cortada (musica parada, navegador morto)
 SEM_JANELA_S = 20          # a janela foi fechada e não voltou: encerra depois disto (F5 volta em ~1 s)
 OCIOSO_S = 180             # a página sumiu sem avisar (ex.: o Edge foi morto): encerra depois disto
 LOG_MAX = 1_000_000        # bytes: acima disto o ui.log recomeça
@@ -245,7 +246,9 @@ def main() -> int:
             raise ValueError("A porta precisa estar entre 8765 e 8775.")
         # R-008: o app (pastas, fila, token) nasce aqui, não ao importar ui.servidor. P2: os dados da pessoa na PASTA_DADOS (no portátil, a raiz)
         app = create_app(port=porta, dados_dir=caminhos.PASTA_DADOS)
-        config = uvicorn.Config(app, host="127.0.0.1", port=porta, log_level="warning", access_log=False)
+        # Prazo de encerramento: sem ele o uvicorn espera PARA SEMPRE as conexoes abertas. Um pedido de musica (Range) que o navegador deixou parado, sem
+        # ler, segurava o servidor depois de fechar a janela ou de apertar Encerrar, e sobrava um pythonw invisivel de ~150 MB (achado no 1o uso real, 27/11).
+        config = uvicorn.Config(app, host="127.0.0.1", port=porta, log_level="warning", access_log=False, timeout_graceful_shutdown=PRAZO_ENCERRAR_CONEXOES_S)
         server = uvicorn.Server(config)
         url = f"http://127.0.0.1:{porta}"
         if not args.sem_navegador:

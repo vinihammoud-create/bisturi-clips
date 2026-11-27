@@ -72,3 +72,91 @@ def test_manter_liga_a_vigia_do_pedido_de_saida(monkeypatch):
 def test_modo_normal_continua_com_a_vigia_da_janela(monkeypatch):
     nasceram = _subir(monkeypatch, [])
     assert "vigia_encerramento" in nasceram
+
+
+# ── o encerramento não pode ficar preso numa conexão aberta (achado no 1º uso real, 27/11) ─────────────────────────────────────────────
+
+def _subir_e_pegar_config(monkeypatch):
+    visto = {}
+
+    class ServidorFalso:
+        def __init__(self, config):
+            self.should_exit = False
+            self.started = True
+
+        def run(self):
+            pass
+
+    def config_falsa(*a, **k):
+        visto.update(k)
+
+    monkeypatch.setattr(ui_main, "preparar_log", lambda: None)
+    monkeypatch.setattr(ui_main, "instancia_ativa", lambda: None)
+    monkeypatch.setattr(ui_main, "porta_livre", lambda: 8765)
+    monkeypatch.setattr(ui_main, "create_app", lambda **k: types.SimpleNamespace(state=types.SimpleNamespace(pedir_saida=False)))
+    monkeypatch.setattr(ui_main.uvicorn, "Config", config_falsa)
+    monkeypatch.setattr(ui_main.uvicorn, "Server", ServidorFalso)
+    monkeypatch.setattr(ui_main.threading, "Thread", lambda *a, **k: types.SimpleNamespace(start=lambda: None))
+    monkeypatch.setattr(ui_main.sys, "argv", ["ui", "--sem-navegador"])
+    assert ui_main.main() == 0
+    return visto
+
+
+def test_o_servidor_tem_prazo_para_encerrar_conexoes_abertas(monkeypatch):
+    """Sem `timeout_graceful_shutdown` o uvicorn espera para sempre: um pedido de música parado (o navegador não lê) segurava o processo vivo."""
+    visto = _subir_e_pegar_config(monkeypatch)
+    assert 0 < visto.get("timeout_graceful_shutdown", 0) <= 10
+
+
+def test_encerrar_com_musica_parada_no_navegador_nao_prende_o_processo():
+    """Real (sobe a interface): abre um Range de música sem ler e pede Encerrar; o processo tem de sair em poucos segundos."""
+    import os
+    import socket
+    import subprocess
+    import time
+    import urllib.request
+    from pathlib import Path
+    from urllib.parse import quote
+    raiz = Path(__file__).resolve().parents[1]
+    faixas = sorted((raiz / "musicas").glob("*.mp3"))
+    if not faixas:
+        import pytest
+        pytest.skip("sem música no catálogo (a cópia pública não leva os mp3)")
+    sys_path = str(raiz / "instalador" / "smoke")
+    import sys as _sys
+    _sys.path.insert(0, sys_path)
+    from smoke import escolher_porta, extrair_token  # pyright: ignore[reportMissingImports]  (o caminho entra no sys.path na hora)
+    porta = escolher_porta()
+    import tempfile
+    dados = tempfile.mkdtemp(prefix="enc_")
+    p = subprocess.Popen([_sys.executable, "-m", "ui", "--sem-navegador", "--port", str(porta)], cwd=str(raiz),
+                         env={**os.environ, "BISTURI_DADOS": dados}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    base = f"http://127.0.0.1:{porta}"
+    s = None
+    try:
+        for _ in range(80):
+            try:
+                urllib.request.urlopen(base + "/health", timeout=1)
+                break
+            except Exception:
+                time.sleep(0.25)
+        token = extrair_token(urllib.request.urlopen(base + "/", timeout=5).read().decode("utf-8", "replace"))
+        cr = chr(13) + chr(10)
+        s = socket.socket()
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+        s.connect(("127.0.0.1", porta))
+        s.sendall(("GET /api/musicas/audio/" + quote(faixas[0].name) + " HTTP/1.1" + cr + "Host: 127.0.0.1:" + str(porta) + cr + "Range: bytes=0-" + cr + cr).encode())
+        time.sleep(1.5)
+        s.settimeout(1)
+        assert b"206" in s.recv(200)                      # a música começou a ser servida e o "navegador" parou de ler
+        req = urllib.request.Request(base + "/api/encerrar", method="POST", headers={"X-Token": token}, data=b"")
+        assert urllib.request.urlopen(req, timeout=10).status == 200
+        t0 = time.time()
+        while time.time() - t0 < 20 and p.poll() is None:
+            time.sleep(0.25)
+        assert p.poll() is not None, "o processo não saiu em 20 s: ficou preso na conexão da música"
+    finally:
+        if s is not None:
+            s.close()
+        if p.poll() is None:
+            p.kill()
