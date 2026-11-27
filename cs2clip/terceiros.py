@@ -167,7 +167,10 @@ def assinatura_valve(dll: Path, rodar=None) -> tuple[bool, str]:
            "try { $s = Get-AuthenticodeSignature -LiteralPath $env:BISTURI_DLL_ASSINADA -ErrorAction Stop; "
            "Write-Output ($s.Status.ToString() + '|' + $s.SignerCertificate.Subject) } "
            "catch { Write-Output ('Erro|' + $_.Exception.Message) }"]
-    ambiente = {**os.environ, "BISTURI_DLL_ASSINADA": str(Path(dll)), "PYTHONIOENCODING": "utf-8"}
+    # Sem PSModulePath herdado: quem abre o programa de dentro do PowerShell 7 (o runner do GitHub, por exemplo) passa os módulos do 7,
+    # e o Windows PowerShell 5.1 não consegue carregar o `Microsoft.PowerShell.Security` ("module could not be loaded"). Ele recalcula o padrão.
+    ambiente = {k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"}
+    ambiente.update({"BISTURI_DLL_ASSINADA": str(Path(dll)), "PYTHONIOENCODING": "utf-8"})
     r = rodar(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, env=ambiente, **sem_janela())
     saida = (r.stdout or "").strip()
     if not saida:   # o PowerShell não respondeu nada: diga o que ele reclamou, em vez de devolver texto vazio

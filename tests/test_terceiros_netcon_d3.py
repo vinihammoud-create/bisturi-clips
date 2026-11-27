@@ -221,6 +221,22 @@ def test_assinatura_valve_com_apostrofo_no_caminho_funciona_de_verdade(tmp_path)
     assert "NotSigned" in texto or "UnknownError" in texto or "NotSupported" in texto, texto   # leu o arquivo (nao quebrou o comando)
 
 
+def test_assinatura_valve_nao_repassa_o_psmodulepath_do_powershell_7(monkeypatch, tmp_path):
+    """No runner do GitHub o PSModulePath é do PowerShell 7 e o 5.1 não carrega o módulo de assinaturas."""
+    monkeypatch.setattr(terceiros.sys, "platform", "win32")
+    monkeypatch.setenv("PSModulePath", "C:/pwsh7/modulos")
+    visto = {}
+
+    class R:
+        stdout = "Valid|CN=Valve Corp."
+
+    def rodar(cmd, **k):
+        visto["env"] = k["env"]
+        return R()
+    assert terceiros.assinatura_valve(tmp_path / "x.dll", rodar=rodar)[0]
+    assert not any(c.upper() == "PSMODULEPATH" for c in visto["env"]) and visto["env"]["BISTURI_DLL_ASSINADA"]
+
+
 def test_assinatura_valve_sem_resposta_do_powershell_diz_o_motivo(monkeypatch, tmp_path):
     """O PowerShell pode ficar mudo (visto no runner do GitHub): a mensagem não pode ser vazia."""
     monkeypatch.setattr(terceiros.sys, "platform", "win32")
