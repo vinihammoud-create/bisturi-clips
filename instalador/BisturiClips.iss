@@ -53,6 +53,10 @@ DefaultDirName={autopf}\Bisturi Clips
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
 PrivilegesRequired=lowest
+; O Setup liga a mitigacao RedirectionGuard do Windows por padrao e os programas que ele inicia a HERDAM: o `uv` cria uma juncao de pasta
+; (cpython-3.12-... -> cpython-3.12.x-...) e o Windows 11 recusa atravessa-la (erro 448, "ponto de montagem nao confiavel") quando o usuario
+; instala sem ser administrador. O Setup nunca roda elevado aqui (PrivilegesRequired=lowest), entao a protecao nao guarda nada que importe.
+RedirectionGuard=no
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763

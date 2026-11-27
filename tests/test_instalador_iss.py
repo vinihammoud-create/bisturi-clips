@@ -866,3 +866,13 @@ def test_compilacao_exige_o_pacote(tmp_path):
     defines = _defines_validos(tmp_path)
     defines.pop("Pacote")
     assert _compilar(tmp_path, **defines).returncode != 0
+
+
+def test_setup_desliga_o_redirectionguard_herdado_pelo_uv():
+    """P11: o Setup liga o RedirectionGuard por padrao e o `uv` (filho) o herda: no Windows 11, sem ser administrador, ele falhava ao criar a
+    juncao do Python (erro 448, "ponto de montagem nao confiavel"). Achado na 1a instalacao real com a tela; o CI e o teste elevado nao viam."""
+    texto = _texto()
+    setup = texto.split("[Setup]", 1)[1].split(chr(10) + "[", 1)[0]
+    linhas = [x.strip() for x in setup.splitlines() if x.strip() and not x.strip().startswith(";")]
+    assert "RedirectionGuard=no" in linhas
+    assert "PrivilegesRequired=lowest" in linhas        # a protecao so tem sentido num Setup elevado; este nunca e
