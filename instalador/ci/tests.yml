@@ -37,8 +37,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: FFmpeg (o cs2clip/tools.py precisa dele no PATH, mesmo sem processar vídeo)
-        run: choco install ffmpeg --no-progress -y
+      - name: FFmpeg fixo (o cs2clip/tools.py precisa dele no PATH; versão e SHA-256 vêm do instalador/componentes.json)
+        run: |
+          $f = (Get-Content instalador/componentes.json -Raw -Encoding UTF8 | ConvertFrom-Json).ffmpeg
+          $arq = Join-Path $env:RUNNER_TEMP 'ffmpeg.7z'
+          Invoke-WebRequest -Uri $f.url -OutFile $arq
+          $hash = (Get-FileHash $arq -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $f.sha256) { throw "o hash do FFmpeg baixado não confere" }
+          $pasta = Join-Path $env:RUNNER_TEMP 'ffmpeg-bin'
+          $sete = (Get-Command 7z -ErrorAction SilentlyContinue).Source; if (-not $sete) { $sete = Join-Path $env:ProgramFiles "7-Zip" ; $sete = Join-Path $sete "7z.exe" }
+          & $sete e -y -r "-o$pasta" $arq ffmpeg.exe ffprobe.exe | Out-Null
+          if (-not (Test-Path (Join-Path $pasta 'ffmpeg.exe'))) { throw "o ffmpeg.exe não saiu do arquivo" }
+          Add-Content -Path $env:GITHUB_PATH -Value $pasta
 
       - name: Instalar o uv (versão fixa, com hash)
         run: |
