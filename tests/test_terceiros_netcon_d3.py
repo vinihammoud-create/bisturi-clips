@@ -221,6 +221,18 @@ def test_assinatura_valve_com_apostrofo_no_caminho_funciona_de_verdade(tmp_path)
     assert "NotSigned" in texto or "UnknownError" in texto or "NotSupported" in texto, texto   # leu o arquivo (nao quebrou o comando)
 
 
+def test_assinatura_valve_sem_resposta_do_powershell_diz_o_motivo(monkeypatch, tmp_path):
+    """O PowerShell pode ficar mudo (visto no runner do GitHub): a mensagem não pode ser vazia."""
+    monkeypatch.setattr(terceiros.sys, "platform", "win32")
+
+    class R:
+        stdout = ""
+        stderr = "o cmdlet falhou" + chr(10) + "outra linha"
+        returncode = 3
+    ok, texto = terceiros.assinatura_valve(tmp_path / "x.dll", rodar=lambda *a, **k: R())
+    assert not ok and "sem resposta do PowerShell" in texto and "código 3" in texto and "o cmdlet falhou" in texto
+
+
 def test_versao_nova_do_hlae_so_informa(monkeypatch):
     abrir = lambda tag: (lambda req, timeout=0: _Resposta(('{"tag_name": "%s"}' % tag).encode()))  # noqa: E731
     assert terceiros.versao_nova_do_hlae(abrir("v2.193.0")) is None                  # igual à fixada

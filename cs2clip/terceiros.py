@@ -164,10 +164,15 @@ def assinatura_valve(dll: Path, rodar=None) -> tuple[bool, str]:
     # O caminho vai por variável de ambiente, NUNCA dentro do texto do comando: no modo instalado ele fica sob o nome do usuário, e um
     # apóstrofo (ou `$(...)`) nele quebraria a conferência ou viraria comando (P5.0).
     cmd = [_powershell(), "-NoProfile", "-NonInteractive", "-Command",
-           "$s = Get-AuthenticodeSignature -LiteralPath $env:BISTURI_DLL_ASSINADA; Write-Output ($s.Status.ToString() + '|' + $s.SignerCertificate.Subject)"]
+           "try { $s = Get-AuthenticodeSignature -LiteralPath $env:BISTURI_DLL_ASSINADA -ErrorAction Stop; "
+           "Write-Output ($s.Status.ToString() + '|' + $s.SignerCertificate.Subject) } "
+           "catch { Write-Output ('Erro|' + $_.Exception.Message) }"]
     ambiente = {**os.environ, "BISTURI_DLL_ASSINADA": str(Path(dll)), "PYTHONIOENCODING": "utf-8"}
     r = rodar(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, env=ambiente, **sem_janela())
     saida = (r.stdout or "").strip()
+    if not saida:   # o PowerShell não respondeu nada: diga o que ele reclamou, em vez de devolver texto vazio
+        erro = ((getattr(r, "stderr", "") or "").strip().splitlines() or [""])[0][:160]
+        return False, f"sem resposta do PowerShell (código {getattr(r, 'returncode', '?')}) {erro}".strip()
     estado, _, assunto = saida.partition("|")
     ok = estado == "Valid" and "valve" in assunto.lower()
     return ok, f"{estado}; {assunto}".strip("; ")
