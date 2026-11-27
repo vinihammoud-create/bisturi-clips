@@ -1,0 +1,16 @@
+# Scripts do Windows precisam de CRLF (o cmd quebra com LF em goto/labels); garante isso em qualquer checkout
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Ganchos do git rodam no sh do Git para Windows: precisam de LF (com CRLF o sh nao acha o interpretador)
+.githooks/* text eol=lf
+
+# Listas de pacotes travadas (P3): sempre LF. O uv e o pip leem as linhas de hash; um CRLF no fim delas pode quebrar a leitura.
+requirements-*.lock text eol=lf
+requirements-*.in text eol=lf
+overrides.txt text eol=lf
+
+# Instalador (P5): dados e script sempre em LF (o .iss e o montar.py leem estes arquivos)
+instalador/componentes.json text eol=lf
+instalador/montar.py text eol=lf

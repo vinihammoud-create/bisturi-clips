@@ -1,0 +1,128 @@
+# ─────────────────────────────────────────────────────────────────────
+#  Bisturi Clips — configuração de exemplo (como o programa é entregue)
+#  Este arquivo mostra as opções principais. Os valores são os do programa, com
+#  as escolhas de estilo já feitas: perfil "esports_blast" (esports limpo),
+#  short sem a versão "com efeitos" e sem título de abertura, chat desligado.
+#  O seu config.toml nasce deste arquivo (pelo instalar.bat ou na primeira
+#  vez que o programa roda, só se ele ainda não existir); o config.toml é o
+#  SEU, fica só neste computador e nunca vai para o git. As demais opções
+#  (e todas estas) aparecem na tela Configurar. As seções que não estão aqui
+#  (capa, resenha e gravacao_demo) usam os valores padrão
+#  do programa (sem o perfil acima, a edição sai diferente: é de propósito, o
+#  exemplo é a escolha de estilo da entrega).
+#
+#  A tela Configurar mexe no config.toml por você. Se preferir editar à
+#  mão: apague (ou comente com #) qualquer linha para voltar ao padrão.
+#  Depois de mudar algo, rode de novo: a análise fica em cache, então só
+#  a parte de cortes/render é refeita (use --refazer para analisar do zero).
+#
+#  As contas do Steam (gravar pela demo) e o apelido de cada uma NÃO ficam
+#  aqui: configure em Configurar → Contas do Steam.
+# ─────────────────────────────────────────────────────────────────────
+
+[deteccao]
+modo = "rapido"           # "rapido" (lê keyframes e refina só onde há abate) ou "completo"
+fps_analise = 10          # leituras do kill feed por segundo (10 = precisão de 0,1 s)
+processos = 6             # partes do vídeo analisadas em paralelo
+
+[cortes]
+antes = 4.0               # segundos antes do 1º abate da jogada
+depois = 2.5              # segundos depois do último abate
+juntar_intervalo = 8.0    # abates mais próximos que isso viram UMA jogada (double, triple...)
+juntar_no_round = 120     # TODOS os abates do mesmo round viram UM vídeo (0 = desliga e volta a separar)
+# falha_com_reacao = false # "começou bem e terminou mal, com a reação": morreu logo depois do último abate e reagiu (raiva/risada) -> vira short
+                           # mesmo com menos de 3 abates (fora da montagem com música); FAILS com raiva/risada também podem virar short
+# Regra do pulo (dono, 15/11/2026): numa jogada com vários abates o vídeo fica 6 s depois de cada abate, volta 6 s antes do
+# seguinte e só pula se sobrar 2 s ou mais para cortar (abates a 14 s ou mais um do outro); senão fica contínuo. Padrões:
+# depois_de_cada_abate = 6.0
+# antes_do_proximo = 6.0
+# pulo_minimo = 2.0
+# pular_parado = 6.0      # ANTIGA: continua aceita, mas já não decide o pulo dentro da jogada (só o short compacto)
+sequencia_max = 90        # duração máxima do vídeo de um round, já sem o tempo parado (s)
+duracao_minima = 7.0
+# estender_reacao = true  # continua o corte enquanto a reação (grito, risada) continua
+reacoes_sem_abate = 8     # momentos sem abate (grito/chat) por vídeo
+so_partidas = true        # cortes, montagem e shorts só de partidas competitivas (sem Deathmatch/aquecimento)
+limiar_reacao = 0.6       # 0 = fala normal ... 1 = grito
+nota_montagem = 20        # nota mínima (0-99) para a MONTAGEM (double kill ~18-26; reação só com emoção)
+nota_short = 30           # nota mínima (0-99) para virar SHORT vertical (os de maior nota primeiro)
+# Efeitos avançados do corte 16:9 (todos desligados: mudam o ritmo e o visual; ligue um por vez e veja o resultado)
+# speed_ramp = false        # acelera 1,75x o trecho vazio entre dois abates distantes
+# freeze_headshot = false   # congela 0,25 s no último headshot, com punch-in de 8% e um impacto sonoro
+# cartao_tatico = false     # cartão "ROUND 12 · CLUTCH 1v4" nos primeiros 1,8 s do corte
+
+[shorts]
+gerar = true
+quantidade = 8            # por vídeo (as de maior nota)
+duracao_maxima = 60       # jogada maior que isso vira short COMPACTO (menos tempo em volta de cada abate)
+antes = 2.0               # no short compacto: segundos antes de cada abate
+depois = 1.5              # no short compacto: segundos depois de cada abate
+largura = 1080
+altura = 1920
+camera_altura = 608       # altura do painel da webcam (topo); o resto é gameplay
+topo = 160                # faixa no alto, sob as abas do TikTok/Reels/Shorts (a câmera desce para o rosto aparecer)
+gancho = 2.0              # o short começa só isto antes do 1º abate (a ação logo de cara)
+versao_efeitos = false    # true = gera também uma versão com tremida + replay em câmera lenta (desligada: nunca foi aprovada)
+marca = ""                # seu @ na faixa do topo do short, ex.: "@seucanal" (vazio ou sem a linha = sem texto)
+zoom_camera = 5.0         # largura do recorte da câmera, em "larguras de rosto"
+zoom_gameplay = 1.25      # >1 aproxima o gameplay e esconde o HUD das bordas
+# legendas = true         # legendas nos shorts (o perfil esports_blast desliga)
+selo_jogada = true        # "DOUBLE KILL", "ACE"... no instante do abate
+zoom_no_abate = true      # "soco" de zoom em cada abate
+# pan_suave = false         # o recorte do jogo balança de leve (até 18 px) em cada abate, em vez de ficar parado
+# camera_manual = []        # força a posição da webcam: [x, y, largura, altura] em 0–1, ex.: [0.02, 0.32, 0.22, 0.25] (vazio = achar sozinho)
+# layout = "classico"       # "webcam_inteira": webcam inteira (com o letreiro) em cima, jogo embaixo com a mira no centro, fundo desfocado do jogo
+# webcam_retangulo = ""     # no layout webcam_inteira: "x,y,largura,altura" da webcam em pixels de 1920x1080, ex.: "32,428,456,276" (vazio = achar sozinho)
+
+[fails]
+gerar = true              # compilação de FAILS: sua morte seguida de frustração ou risada (FAILS_<id>.mp4)
+quantidade = 8            # no máximo, por vídeo
+# exigir_aprovacao = false  # true = a compilação FAILS_*.mp4 leva só os que você marcou Gostei na revisão
+
+[montagem]
+gerar = true
+perfil = "esports_blast"  # estilo pronto de edição. "esports_blast" = esports limpo, estilo BLAST/HLTV (corte seco, música na batida,
+                          # sem legenda, sem título de abertura no short): é o estilo com que o programa é entregue.
+                          # Outras opções: "fragmovie_musical", "criador_live", "jogo_puro", "shorts_viral"; "" = personalizado. Um perfil decide
+                          # cortes.pular_parado, cortes.estender_reacao, shorts.legendas, shorts.selo_jogada,
+                          # shorts.zoom_no_abate, montagem.ordem, montagem.transicao_tipo, montagem.musica,
+                          # montagem.kill_sync e montagem.sfx: com perfil, as chaves desses nomes que você escrever abaixo valem por cima.
+# ordem = "cronologica"   # "cronologica", "melhores" ou "arco"
+transicao = 0.12          # fade curto no início/fim de cada corte avulso (a montagem tira essa borda)
+transicao_tipo = "corte"  # montagem: "corte" (seco, estilo esports) ou "fade" (mistura de 0,25 s)
+musica = "auto"           # "auto" = uma da pasta musicas/; "" = sem música; ou o nome do arquivo
+volume_musica = -4.0      # dB da música em relação ao som do jogo
+# grade_de_corte = "batida"   # "compasso" = prefere o "1" do compasso (só nas músicas com compasso marcado; a ferramenta de marcar é de desenvolvimento, não incluída nesta cópia)
+# ducking_tiros_db = 0.0      # a música abaixa este tanto (dB) por ~0,2 s a cada abate; 0 = desligado. Teste 2 a 4 e ouça
+# versao_com_voz = false      # também gera MONTAGEM_VOZ_*.mp4: as mesmas jogadas, com a sua voz e sem música
+
+[audio]
+faixa_jogo = 0            # faixa do OBS só com o som do jogo (0 = não tenho). Se ela vier igual à faixa 1 (o OBS
+                          # ainda gravando a mesma mistura em todas) e a gravação não tiver voz, a montagem já usa
+                          # a faixa 1 como som do jogo; com voz, a montagem fica sem música até separar no OBS
+faixa_voz = 0             # faixa do OBS só com o seu microfone (0 = não tenho)
+faixa_comms = 0           # faixa do OBS só com o Discord (0 = não tenho). Nunca entra no áudio que o programa monta; com tratar_voz o áudio sai só do microfone + jogo
+# tratar_voz = false        # limpa a voz e baixa o jogo enquanto você fala (precisa de faixa_voz e faixa_jogo)
+# separar_jogo_faixa_unica = false   # gravação sem faixa só do jogo (1 faixa, ou o OBS gravando a mesma mistura em
+                                      # todas): cria a faixa "jogo" tirando a voz (filtro do FFmpeg; usa a IA Demucs
+                                      # só se você mesmo a instalou à parte) e a montagem ganha música
+
+[transcricao]
+modelo = "large-v3-turbo" # Whisper (GPU). Mais leve: "medium" ou "small"
+idioma = "pt"
+
+[chat]
+usar = false              # true = baixa o chat da Twitch do VOD (ID no nome do arquivo). Desligado: nunca foi testado com chat de verdade
+atraso = 6.0              # usado se não der para calibrar pelo próprio vídeo
+
+[qualidade]
+encoder = "auto"          # auto | h264_nvenc | hevc_nvenc | libx264
+cq = 21                   # menor = mais qualidade e arquivo maior (19–23)
+lufs = -14.0              # volume padrão de YouTube/TikTok/Instagram
+renders_paralelos = 2     # cortes renderizados ao mesmo tempo (placa de vídeo com pouca memória: 2 ou 1)
+# checar_conteudo = true    # reprova arquivo com vídeo inteiramente preto (custa menos de 1 s por arquivo)
+# checar_silencio = false   # reprova também áudio inteiramente mudo (desligado: pode ser falso alarme)
+# gate_loudness = false     # reprova a montagem se o volume fugir de ±2 LU do alvo ou o pico passar de -1 dBTP (desligado: só avisa no qualidade.json)
+
+[demo]
+jogador = ""             # seu nome no jogo (ou parte dele). Ex.: "Fulano". Vazio = o programa lista os jogadores

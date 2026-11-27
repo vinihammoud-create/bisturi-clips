@@ -1,0 +1,207 @@
+name: Release
+
+# Workflow do repositório PÚBLICO (P6 do plano de publicação). Fica em instalador/ci/ e o exportador o coloca em .github/workflows/release.yml da cópia
+# pública. A oficina (privada) não o executa (o dono não paga o Actions de lá; no repositório público ele é grátis).
+#
+# Roda quando alguém empurra uma tag vX.Y.Z. Faz tudo na máquina do GitHub (limpa, descartável); NADA disto roda no PC do dono:
+#   1. confere a tag (vX.Y.Z) e que ela é a versão do código (cs2clip.__version__); tira as notas da versão do CHANGELOG.md;
+#   2. instala o Inno Setup 7.1.1 (versão fixa; o SHA-256 é conferido ANTES de executar);
+#   3. python instalador/montar.py: confere os dados, baixa uv e FFmpeg com hash, monta o pacote e compila o instalador (.exe);
+#   4. instala o .exe em silêncio (caminho com espaço; sem atalho, sem modelo de voz, sem NVIDIA), roda o smoke.py com o Python instalado,
+#      desinstala e confere que o programa sumiu e que a pasta de dados ficou;
+#   5. só se tudo passou: SHA256SUMS.txt e a Release como RASCUNHO (draft) com o .exe, o SHA256SUMS.txt e as notas. O dono confere e publica à mão.
+# O instalador testado é o MESMO arquivo que vai para a Release (com o AppId real): a máquina é descartável, então não há o que proteger com um
+# AppId de teste, e assim o que foi provado é exatamente o que será entregue.
+# Regras: ações fixadas por SHA de commit (a tag de origem vai no comentário), nada de ${{ }} dentro de `run` (injeção), permissão de escrita
+# só no job que cria a Release (o job que roda o instalador e o código do projeto só lê).
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  montar-e-provar:
+    name: montar e provar o instalador (windows)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Python 3.12
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Conferir a tag e a versão do código
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($env:GITHUB_REF_TYPE -ne 'tag' -or $tag -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "a tag precisa ser vX.Y.Z (por exemplo v1.1.0); veio: $tag"
+          }
+          $versao = $tag.Substring(1)
+          $doCodigo = (python -c "from cs2clip import __version__; print(__version__)").Trim()
+          if ($doCodigo -ne $versao) {
+            throw "a tag $tag não é a versão do código ($doCodigo em cs2clip/__init__.py): corrija um dos dois e crie a tag de novo"
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "VERSAO=$versao"
+
+      - name: Notas da versão (seção da tag no CHANGELOG.md)
+        run: |
+          python instalador/notas_da_versao.py --tag $env:GITHUB_REF_NAME --changelog CHANGELOG.md --saida dist/notas.md
+          if ($LASTEXITCODE -ne 0) { throw "o CHANGELOG.md não tem as notas desta versão" }
+
+      - name: Instalar o Inno Setup 7.1.1 (versão fixa, hash conferido antes de executar)
+        run: |
+          $url = 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe'
+          $esperado = '8a5a6711c3766a6e5fb74f280ba0e3551e719ce94538d901fdbd1f8f9920b3f0'
+          $arquivo = Join-Path $env:RUNNER_TEMP 'innosetup-7.1.1-x64.exe'
+          $destino = Join-Path $env:RUNNER_TEMP 'inno7'
+          Invoke-WebRequest -Uri $url -OutFile $arquivo -MaximumRedirection 5
+          $achado = (Get-FileHash -Algorithm SHA256 -LiteralPath $arquivo).Hash.ToLowerInvariant()
+          if ($achado -ne $esperado) { throw "o instalador do Inno Setup tem o hash $achado, esperado $esperado: NÃO executado" }
+          $p = Start-Process -FilePath $arquivo -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CURRENTUSER', "/DIR=$destino") -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "a instalação do Inno Setup falhou (código $($p.ExitCode))" }
+          $iscc = Join-Path $destino 'ISCC.exe'
+          if (-not (Test-Path -LiteralPath $iscc)) { throw "não achei $iscc depois de instalar o Inno Setup" }
+          Add-Content -Path $env:GITHUB_ENV -Value "ISCC_CAMINHO=$iscc"
+
+      - name: Dependência da montagem (numpy, com hashes do lock)
+        run: |
+          python -m pip install --require-hashes --no-deps -r instalador/ci/requirements-montagem.txt
+          if ($LASTEXITCODE -ne 0) { throw "não instalei o numpy" }
+
+      - name: Conferir os dados (componentes.json, catálogo, terceiros)
+        run: |
+          python instalador/montar.py --validar
+          if ($LASTEXITCODE -ne 0) { throw "a conferência dos dados falhou" }
+
+      - name: Baixar uv e FFmpeg (SHA-256 conferido), montar o pacote e compilar
+        run: |
+          python instalador/montar.py --baixar --pacote dist/pacote --compilar --iscc $env:ISCC_CAMINHO --cache dist/cache --saida dist/saida
+          if ($LASTEXITCODE -ne 0) { throw "a montagem do instalador falhou" }
+          $exe = Join-Path 'dist/saida' "BisturiClips-Setup-$env:VERSAO.exe"
+          if (-not (Test-Path -LiteralPath $exe)) { throw "o instalador $exe não foi gerado" }
+
+      - name: Reunir a entrega (instalador, notas) e calcular o SHA256SUMS.txt
+        run: |
+          $nome = "BisturiClips-Setup-$env:VERSAO.exe"
+          New-Item -ItemType Directory -Force -Path 'dist/entrega' | Out-Null
+          Copy-Item -LiteralPath (Join-Path 'dist/saida' $nome) -Destination 'dist/entrega'
+          Copy-Item -LiteralPath 'dist/notas.md' -Destination 'dist/entrega'
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path 'dist/entrega' $nome)).Hash.ToLowerInvariant()
+          $texto = "$hash  $nome`n"
+          [System.IO.File]::WriteAllText((Join-Path (Get-Location) 'dist/entrega/SHA256SUMS.txt'), $texto, [System.Text.UTF8Encoding]::new($false))
+          Write-Host $texto
+
+      - name: Instalar em silêncio na máquina do GitHub (caminho com espaço, sem atalho, sem modelo, sem NVIDIA)
+        run: |
+          $raiz = Join-Path $env:RUNNER_TEMP 'Bisturi Teste'
+          $prog = Join-Path $raiz 'Programa Instalado'
+          $dados = Join-Path $raiz 'Dados do Teste'
+          $logs = Join-Path $raiz 'logs'
+          New-Item -ItemType Directory -Force -Path $logs | Out-Null
+          Add-Content -Path $env:GITHUB_ENV -Value "PROG_TESTE=$prog"
+          Add-Content -Path $env:GITHUB_ENV -Value "DADOS_TESTE=$dados"
+          Add-Content -Path $env:GITHUB_ENV -Value "LOGS_TESTE=$logs"
+          $exe = Join-Path (Get-Location) "dist/entrega/BisturiClips-Setup-$env:VERSAO.exe"
+          $argumentos = @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CURRENTUSER',
+            ('/DIR="' + $prog + '"'), ('/DADOS="' + $dados + '"'), ('/LOG="' + (Join-Path $logs 'setup.log') + '"'),
+            '/SEMATALHO=1', '/SEMMODELO=1', '/SEMNVIDIA=1', '/MERGETASKS="!musicas,!atalho"'
+          )
+          $p = Start-Process -FilePath $exe -ArgumentList $argumentos -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "a instalação silenciosa falhou (código $($p.ExitCode)); veja o log em artefatos" }
+          foreach ($f in @('venv\Scripts\python.exe', 'app\cs2clip\__init__.py', 'app\bin\ffmpeg.exe', 'unins000.exe')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $prog $f))) { throw "depois de instalar falta $f em $prog" }
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $dados '.bisturi-dados'))) { throw "a pasta de dados não tem o marcador .bisturi-dados" }
+
+      - name: Smoke (com o Python instalado)
+        timeout-minutes: 30
+        run: |
+          $py = Join-Path $env:PROG_TESTE 'venv\Scripts\python.exe'
+          & $py instalador/smoke/smoke.py --raiz (Join-Path $env:PROG_TESTE 'app') --dados $env:DADOS_TESTE --python $py
+          if ($LASTEXITCODE -ne 0) { throw "o smoke reprovou o programa instalado" }
+
+      - name: Desinstalar e conferir (o programa some, os dados ficam)
+        run: |
+          $unins = Join-Path $env:PROG_TESTE 'unins000.exe'
+          if (-not (Test-Path -LiteralPath $unins)) { throw "não achei o desinstalador $unins" }
+          $p = Start-Process -FilePath $unins -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "a desinstalação falhou (código $($p.ExitCode))" }
+          # o desinstalador termina numa cópia de si mesmo: espera o programa sumir de verdade
+          $limite = (Get-Date).AddSeconds(120)
+          while ((Test-Path -LiteralPath (Join-Path $env:PROG_TESTE 'app')) -and (Get-Date) -lt $limite) { Start-Sleep -Seconds 2 }
+          foreach ($f in @('app', 'venv', 'runtime', 'cache-uv')) {
+            if (Test-Path -LiteralPath (Join-Path $env:PROG_TESTE $f)) { throw "depois de desinstalar ainda existe $f em $env:PROG_TESTE" }
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $env:DADOS_TESTE '.bisturi-dados'))) { throw "a desinstalação apagou a pasta de dados (devia mantê-la)" }
+          Write-Host "ok: programa removido, pasta de dados mantida"
+
+      - name: Juntar os logs (se algo falhou)
+        if: failure()
+        run: |
+          if ($env:PROG_TESTE -and $env:LOGS_TESTE) {
+            $log = Join-Path $env:PROG_TESTE 'instalacao.log'
+            if (Test-Path -LiteralPath $log) { Copy-Item -LiteralPath $log -Destination $env:LOGS_TESTE }
+          }
+          exit 0
+
+      - name: Guardar os logs (se algo falhou)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: logs-da-instalacao
+          path: ${{ runner.temp }}\Bisturi Teste\logs
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Guardar o instalador provado para a Release
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: dist/entrega
+          if-no-files-found: error
+          retention-days: 7
+
+  publicar-rascunho:
+    name: criar a Release como rascunho
+    needs: montar-e-provar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # escrita só aqui: este job não roda código do projeto nem o instalador, só confere o hash e cria o rascunho
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Baixar o que foi provado
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: dist
+
+      - name: Conferir o SHA-256 do que chegou
+        working-directory: dist
+        run: |
+          find . -type f | sort
+          sha256sum -c SHA256SUMS.txt
+
+      - name: Criar a Release como rascunho (draft)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          versao="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" "dist/BisturiClips-Setup-${versao}.exe" dist/SHA256SUMS.txt \
+            --draft --verify-tag --title "Bisturi Clips ${versao}" --notes-file dist/notas.md

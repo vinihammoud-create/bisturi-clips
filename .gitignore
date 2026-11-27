@@ -1,0 +1,77 @@
+# Ambiente e cache
+.venv/
+.venv-ia/
+__pycache__/
+*.pyc
+.pytest_cache/
+.pytest_tmp/
+config.toml
+config.toml.bak
+config.toml.antes-*
+config.toml.*
+# temporário da tela Configurar (ui/configuracao.py) antes de trocar pelo config.toml
+config-*.tmp
+
+# Mídia e dados pessoais (nunca versionar)
+entrada/
+saida/
+saida*/
+dados/
+tools/gabarito_momentos.csv
+*.mp4
+*.mkv
+*.mov
+*.webm
+*.flv
+*.ts
+*.avi
+*.m4v
+*.wmv
+*.mpg
+*.mpeg
+*.m2ts
+*.3gp
+*.dem
+*.wav
+*.mp3
+*.bundle
+backups/
+musicas/*.mp3
+musicas/quarentena/
+musicas/*.wav
+musicas/*.ogg
+musicas/*.flac
+musicas/*.m4a
+musicas/*.opus
+
+# Binários de terceiros (TwitchDownloaderCLI.exe: baixar do GitHub oficial; as licenças ficam no git)
+bin/*.exe
+
+# Segredos
+.env
+*.secret.*
+client_secret*.json
+token*.json
+
+# Perfis aprendidos de videos locais (mantem apenas os catalogos de referencia)
+perfis_aprendidos/*.json
+!perfis_aprendidos/catalogo_pro_cs2.json
+!perfis_aprendidos/amostra_pro_cs2.json
+
+# Parte D (gravar pelo CS2): binarios de terceiros e saidas locais (nunca versionar)
+bin/hlae/
+bin/boiler/
+bin/TERCEIROS.json
+demos/
+gravacao_demo/
+trabalhos/
+musicas/candidatas/
+musicas/historico.json
+musicas/catalogo_usuario.json
+
+
+# Logs soltos de execuções na raiz (saida_*.log): ficam fora do git
+/saida*.log
+
+# Provas e ferramentas temporarias dos ajudantes (nada de fora da pasta do projeto)
+.tmp_agentes/

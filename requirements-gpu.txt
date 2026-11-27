@@ -1,0 +1,6 @@
+# Biblioteca da NVIDIA que o Whisper usa para rodar na placa de vídeo (CUDA): só o cuBLAS. Só o instalar.bat a instala, e só quando acha uma placa
+# NVIDIA (nvidia-smi). Sem placa seria ~0,8 GB inútil. Instale SEMPRE com `pip install --no-deps -r requirements-gpu.txt`: o cuBLAS 12.9 declara o
+# nvrtc como dependência e o pip o traria de volta.
+# Fora desde 14/11/2026: nvidia-cudnn-cu12 (1,1 GB) e nvidia-cuda-nvrtc-cu12 (0,2 GB). O ctranslate2 4.8.2 só carrega cublas64_12.dll e nvcuda.dll;
+# provado na RTX 3050 com 60 s de áudio: texto idêntico (mesmo hash, 83 palavras) e mesmo tempo (2,5 s), com e sem as duas bibliotecas.
+nvidia-cublas-cu12==12.9.2.10

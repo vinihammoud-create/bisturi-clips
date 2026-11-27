@@ -1,0 +1,9 @@
+{
+  "include": ["cs2clip", "ui", "tools", "tests"],
+  "exclude": ["**/__pycache__", ".venv", ".venv-ia", ".pytest_tmp", "saida*", "dados", "backups", "bin", "entrada", "demos", "trabalhos", "gravacao_demo"],
+  "typeCheckingMode": "standard",
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Windows",
+  "venvPath": ".",
+  "venv": ".venv"
+}

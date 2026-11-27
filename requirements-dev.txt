@@ -1,0 +1,8 @@
+-r requirements.txt
+-r requirements-ui.txt
+pandas>=2.0               # tabelas falsas nos testes da demo (tests/test_demo.py)
+av>=12                    # PyAV: quadros-chave da varredura (cs2clip/scan.py)
+pytest>=8.0
+pytest-xdist==3.8.0       # testes em paralelo (-n 8); liberado pelo auditor em 13/11/2026
+basedpyright==1.40.2      # verificador de tipos (traz o Node dentro do pacote nodejs-wheel-binaries); liberado pelo auditor em 13/11/2026
+httpx==0.28.1         # so os testes da interface (TestClient do starlette); saiu do requirements-ui.txt em 26/11/2026 (P3.7); traz o httpcore

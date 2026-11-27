@@ -1,0 +1,4 @@
+# O uv usado pelos workflows (mesma versão do instalador/componentes.json). Só o wheel de Windows 64 bits, com o hash do PyPI.
+# Uso: python -m pip install --require-hashes --no-deps -r instalador/ci/requirements-uv.txt
+uv==0.13.10 \
+    --hash=sha256:d87b9cf8165f2b3cc596e856b5bf794da9cfad6d1b110ca9d87eed42a15b3684

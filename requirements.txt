@@ -1,0 +1,10 @@
+numpy>=2.0
+opencv-python-headless>=4.10
+faster-whisper>=1.1
+rapidocr-onnxruntime>=1.4   # OCR do banner de fim de round (cs2clip/roundend.py), CPU, sem GPU
+demoparser2==0.42.2       # leitura de demos .dem (cs2clip/demo.py), MIT; a 0.42.0 não abre demo do patch 14197 (11/11/2026)
+pydantic>=2.0             # validacao declarativa do EditPlan (cs2clip/plano.py)
+av>=12                    # PyAV: quadros-chave da varredura (cs2clip/scan.py)
+pandas>=2.0               # tabelas de eventos da demo (cs2clip/demo.py)
+filelock>=4.2.1          # indireta (vem com o huggingface-hub); piso fixado pelo pip-audit de 02/11
+certifi>=2026.10.18       # indireta (HTTPS); idem

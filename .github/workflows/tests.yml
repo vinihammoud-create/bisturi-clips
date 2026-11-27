@@ -1,0 +1,67 @@
+name: Testes
+
+# Workflow do repositório PÚBLICO (P6 do plano de publicação). Fica em instalador/ci/ e o exportador o coloca em .github/workflows/tests.yml da cópia
+# pública. A oficina (privada) continua com o tests.yml manual dela (tests/test_ci_so_manual_f8.py); este NÃO roda lá.
+#
+# Suíte rápida no Windows (o programa é de Windows), com o MESMO lock que o instalador usa (requirements-runtime.lock, com hashes) e as ferramentas
+# de teste instaladas DEPOIS do `uv pip sync` (o sync desinstala tudo o que não está no lock; docs/instalador/ACHADOS_POC.md, prova B).
+# Tudo em CPU: sem GPU, sem Whisper, sem NVENC. Os testes lentos (renderizam vídeo de verdade) ficam para o notebook com a placa.
+# Regras: ações fixadas por SHA de commit (a tag de origem vai no comentário), permissão mínima (só ler), nada de ${{ }} dentro de `run`.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testes-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rapidos:
+    name: rapidos (windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Python 3.12
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: FFmpeg (o cs2clip/tools.py precisa dele no PATH, mesmo sem processar vídeo)
+        run: choco install ffmpeg --no-progress -y
+
+      - name: Instalar o uv (versão fixa, com hash)
+        run: |
+          python -m pip install --require-hashes --no-deps -r instalador/ci/requirements-uv.txt
+          if ($LASTEXITCODE -ne 0) { throw "não instalei o uv" }
+
+      - name: Ambiente de teste (lock com hashes; ferramentas de teste DEPOIS do sync)
+        run: |
+          $venv = Join-Path $env:RUNNER_TEMP 'venv-teste'
+          python -m uv venv $venv --python 3.12 --no-python-downloads
+          if ($LASTEXITCODE -ne 0) { throw "uv venv falhou" }
+          python -m uv pip sync --python (Join-Path $venv 'Scripts\python.exe') --require-hashes requirements-runtime.lock
+          if ($LASTEXITCODE -ne 0) { throw "uv pip sync falhou" }
+          python -m uv pip install --python (Join-Path $venv 'Scripts\python.exe') -r instalador/ci/requirements-teste.txt
+          if ($LASTEXITCODE -ne 0) { throw "não instalei as ferramentas de teste" }
+          Add-Content -Path $env:GITHUB_ENV -Value "PY_TESTE=$(Join-Path $venv 'Scripts\python.exe')"
+
+      - name: ruff (erros reais - nomes indefinidos, imports sobrando, sintaxe)
+        run: |
+          & $env:PY_TESTE -m ruff check --select F,E9 .
+          if ($LASTEXITCODE -ne 0) { throw "ruff reprovou" }
+
+      - name: pytest (rápidos)
+        run: |
+          & $env:PY_TESTE -m pytest -q -m "not lento" -n 4
+          if ($LASTEXITCODE -ne 0) { throw "pytest reprovou" }

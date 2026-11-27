@@ -1,0 +1,5 @@
+# Fonte do requirements-gpu.lock (só o cuBLAS, para o Whisper na placa NVIDIA). Gerar de novo, na raiz, com o uv 0.13.10:
+#   uv pip compile requirements-gpu.in --generate-hashes --python-version 3.12 --python-platform windows --no-deps -o requirements-gpu.lock
+# `--no-deps` é obrigatório: o cuBLAS 12.9 declara o nvrtc como dependência. Não acrescente cuDNN nem nvrtc aqui (tests/test_lock_sem_dev.py).
+# O `requirements-gpu.txt` de hoje continua servindo ao modo portátil (`instalar.bat`).
+nvidia-cublas-cu12==12.9.2.10

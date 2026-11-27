@@ -1,0 +1,5 @@
+# Ferramentas de teste do tests.yml, instaladas DEPOIS do `uv pip sync` (o sync desinstala tudo o que não está no lock; ACHADOS_POC, prova B).
+# Versões iguais às do ambiente de desenvolvimento. Só rodam no job de testes, que tem a permissão contents: read.
+pytest==9.1.1
+pytest-xdist==3.8.0
+ruff==0.17.4

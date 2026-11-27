@@ -1,0 +1,10 @@
+AVISO SOBRE OS ICONES DESTA PASTA
+
+Os arquivos .png desta pasta sao recortes do HUD do Counter-Strike 2, (c) Valve Corporation.
+
+- Eles NAO sao cobertos pela licenca MIT deste projeto. Todos os direitos sobre eles sao da Valve.
+- Sao usados so como referencia para o programa reconhecer o icone na tela (por exemplo, o de headshot no kill feed).
+- Serao trocados por desenhos proprios do projeto.
+
+Counter-Strike 2 e marca da Valve Corporation. O Bisturi Clips e um projeto independente, sem ligacao com a Valve.
+Veja tambem o CREDITOS.md, na raiz do projeto.

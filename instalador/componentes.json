@@ -1,0 +1,243 @@
+{
+ "esquema": 1,
+ "uv": {
+  "versao": "0.13.10",
+  "url": "https://github.com/astral-sh/uv/releases/download/0.13.10/uv-x86_64-pc-windows-msvc.zip",
+  "sha256": "297b3881fe1adfb922becc2c1613202abb41dc83ea5ff43d472aa087ca1f8683",
+  "tamanho": 15641577
+ },
+ "ffmpeg": {
+  "versao": "9.1",
+  "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-essentials_build.7z",
+  "sha256": "835b9a733445ba7a56a37a26cf7bde84e2f3ce7da2a8ec984276bb2abb1b922c",
+  "tamanho": 36671021,
+  "tamanho_extraido": 345175907
+ },
+ "musicas": {
+  "faixas": [
+   {
+    "arquivo": "Action Strike.mp3",
+    "titulo": "Action Strike",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Action%20Strike.mp3",
+    "sha256": "0a2305ad157fc35feceb4c61ff6686f9a8fca504d6f30d883f837449a53d758e",
+    "tamanho": 5377644
+   },
+   {
+    "arquivo": "Apex.mp3",
+    "titulo": "Apex",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Apex.mp3",
+    "sha256": "4634c7a7b1c0bc370e050a54882111a48f30ab6afa0d59c0f4506639d63cfd4a",
+    "tamanho": 10103519
+   },
+   {
+    "arquivo": "Battle Ready.mp3",
+    "titulo": "Battle Ready",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Battle%20Ready.mp3",
+    "sha256": "b836e4de121d86f04d9817907490888374648d21ee9ffb0bc2086a4c39306eb6",
+    "tamanho": 1556365
+   },
+   {
+    "arquivo": "Beat One.mp3",
+    "titulo": "Beat One",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Beat%20One.mp3",
+    "sha256": "930dd4c6c88a2abb153f52e56a7c74bd041008f5afa4835602469dba3676aed8",
+    "tamanho": 5835821
+   },
+   {
+    "arquivo": "Behind Enemy Lines.mp3",
+    "titulo": "Behind Enemy Lines",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Behind%20Enemy%20Lines.mp3",
+    "sha256": "2dbfbfd7f66f5f3748bde860235eaf18e386eeb2323f7edb23f30bd978f266e5",
+    "tamanho": 4596506
+   },
+   {
+    "arquivo": "Blippy Trance.mp3",
+    "titulo": "Blippy Trance",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Blippy%20Trance.mp3",
+    "sha256": "68ab5625f1b723d7fcfeaa47b44379fddc7bb5ffcc9d71017fabd07b5c2ca93a",
+    "tamanho": 4937089
+   },
+   {
+    "arquivo": "Circuit.mp3",
+    "titulo": "Circuit",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Circuit.mp3",
+    "sha256": "f890ea8276ff8ba52d81dc58235bee714b25295a3794cc8a7ddb19b9287cf85b",
+    "tamanho": 7210908
+   },
+   {
+    "arquivo": "City Run.mp3",
+    "titulo": "City Run",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/City%20Run.mp3",
+    "sha256": "69a845f45d876c4d4e7fa08eca576ee667f3fef5022b3a569b3d33a4faeefe7f",
+    "tamanho": 1484800
+   },
+   {
+    "arquivo": "Drop Point.mp3",
+    "titulo": "Drop Point",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Drop%20Point.mp3",
+    "sha256": "00082677a2ca637d3b415a2afee1a2bad145adaf6b37c44fbf323605c8d84482",
+    "tamanho": 3685788
+   },
+   {
+    "arquivo": "Energizing.mp3",
+    "titulo": "Energizing",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Energizing.mp3",
+    "sha256": "6b6f002c9721debbdb4a870fd7a084ec920761a064ca0333ad603e6348a538a4",
+    "tamanho": 3040798
+   },
+   {
+    "arquivo": "Epic Boss Battle.mp3",
+    "titulo": "Epic Boss Battle",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Epic%20Boss%20Battle.mp3",
+    "sha256": "9ea1753ae8bdf665e2b7011c9dd115bf764146d75004301a08a5efc7e6d7eaa7",
+    "tamanho": 6811056
+   },
+   {
+    "arquivo": "Hit n Smash.mp3",
+    "titulo": "Hit n Smash",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Hit%20n%20Smash.mp3",
+    "sha256": "222b2220958c1525d6c85ec12b7ce13380a4f432dd3cf48eaefa7a44d8006756",
+    "tamanho": 5320621
+   },
+   {
+    "arquivo": "Quick Metal Riff 1.mp3",
+    "titulo": "Quick Metal Riff 1",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Quick%20Metal%20Riff%201.mp3",
+    "sha256": "c730dcfa9b010397b362e59226927044e7dff918e93ae390ecef2589599869a8",
+    "tamanho": 137320
+   },
+   {
+    "arquivo": "Spec Ops.mp3",
+    "titulo": "Spec Ops",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Spec%20Ops.mp3",
+    "sha256": "02e9ffe34f58edb2533315d58ee7242324279dd7aebd8bb736202d73e7691dd2",
+    "tamanho": 2184150
+   },
+   {
+    "arquivo": "Komiku - 01 - Action Introduction.mp3",
+    "titulo": "Action Introduction",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Komiku_-_01_-_Action_Introduction%28chosic.com%29.mp3",
+    "sha256": "9df4c612af5e92836506be176a7457ab6cbb780d55152b3849367a24d18f178b",
+    "tamanho": 6487989
+   },
+   {
+    "arquivo": "Komiku - 11 - Action Epic.mp3",
+    "titulo": "Action Epic",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Komiku_-_11_-_Action_Epic%28chosic.com%29.mp3",
+    "sha256": "35dc1747f4fadcaed85cf66f0a52f7f886bfedce8d3d4017a6c1524c58052872",
+    "tamanho": 6082569
+   },
+   {
+    "arquivo": "Komiku - 15 - Victory.mp3",
+    "titulo": "Victory",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Komiku_-_15_-_Victory%28chosic.com%29.mp3",
+    "sha256": "35eba4d1fa08f2dd48acfc06c78ee9db1bd6ebd56d8028c2f930f5d030141d70",
+    "tamanho": 9559717
+   },
+   {
+    "arquivo": "Komiku - 19 - Action Decisive Move.mp3",
+    "titulo": "Action Decisive Move",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Komiku_-_19_-_Action_Decisive_Move%28chosic.com%29.mp3",
+    "sha256": "0b805555c13d09f52ec9857c704e2b9d89c8ba693fa5ad72cd3dc964a076ffaa",
+    "tamanho": 6377230
+   },
+   {
+    "arquivo": "Komiku - 20 - Action Techno.mp3",
+    "titulo": "Action Techno",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Komiku_-_20_-_Action_Techno%28chosic.com%29.mp3",
+    "sha256": "e038e9648b4007154346e42410be3044693054c69f6bba4b0a900809f2e6b6f2",
+    "tamanho": 6473361
+   },
+   {
+    "arquivo": "Loyalty Freak Music - 07 - GIGA METAL.mp3",
+    "titulo": "GIGA METAL",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Loyalty_Freak_Music_-_07_-_GIGA_METAL%28chosic.com%29.mp3",
+    "sha256": "60246f343ae974c85bc89d731846248d5ff2876c35022ea731c6ecc4c5a44315",
+    "tamanho": 7782242
+   },
+   {
+    "arquivo": "Monplaisir - 18 - Epicness in despair.mp3",
+    "titulo": "Epicness in despair",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Monplaisir_-_18_-_Epicness_in_despair%28chosic.com%29.mp3",
+    "sha256": "a0768c15ab4e531ccb86bfc16fb427913f34313a9341b079dd7b7f4cad909b15",
+    "tamanho": 5181637
+   },
+   {
+    "arquivo": "Planeteer Reaction.mp3",
+    "titulo": "Planeteer Reaction",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/freepd.com/Planeteer%20Reaction.mp3",
+    "sha256": "48ea5f463fea19eaa478ba12b88c41bca8a6fe22b3e2eb814a06e3f3a912cdbc",
+    "tamanho": 4968836
+   },
+   {
+    "arquivo": "Soft and Furious - 08 - Hyper Staying.mp3",
+    "titulo": "Hyper Staying",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Soft_and_Furious_-_08_-_Hyper_Staying%28chosic.com%29.mp3",
+    "sha256": "50f05bfb669196c3066f21cd983efb897e7b164b3c99f7205d0159d1e494817d",
+    "tamanho": 8278673
+   },
+   {
+    "arquivo": "Frederic Lardon - 07 - Its a trap.mp3",
+    "titulo": "Its a trap",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Frederic_Lardon_-_07_-_Its_a_trap%28chosic.com%29.mp3",
+    "sha256": "db8b9f65420399365817de86ff13755ba3adf8038dee05c481444be0a8ef077f",
+    "tamanho": 5210560
+   },
+   {
+    "arquivo": "Dancefloor is Lava - 02 - Ok All Right Yeah.mp3",
+    "titulo": "Ok All Right Yeah",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Dancefloor_is_Lava_-_02_-_Ok_All_Right_Yeah%28chosic.com%29.mp3",
+    "sha256": "84b8d05423fee71e0a6a1c36bd47ee530d92b0086362a9f6f8e193c956730c0a",
+    "tamanho": 7539177
+   },
+   {
+    "arquivo": "Dancefloor is Lava - 04 - Drown in noise.mp3",
+    "titulo": "Drown in noise",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Dancefloor_is_Lava_-_04_-_Drown_in_noise%28chosic.com%29.mp3",
+    "sha256": "8c9b36e5671c769aa1ac6a845ec2db82882d3412bbdc95c4d4dbde73b26d8fff",
+    "tamanho": 7504696
+   },
+   {
+    "arquivo": "Komiku - 02 - Level 1  Jump and shoot stuff 101.mp3",
+    "titulo": "Level 1 - Jump and shoot stuff 101",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Komiku_-_02_-_Level_1__Jump_and_shoot_stuff_101%28chosic.com%29.mp3",
+    "sha256": "b73c5bcaaee8b4bf06bfebd61868cc32cd877e3c17d62c8433c5cefdcbfcfdf9",
+    "tamanho": 6287745
+   },
+   {
+    "arquivo": "Komiku - 07 - Frozen Jungle.mp3",
+    "titulo": "Frozen Jungle",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Komiku_-_07_-_Frozen_Jungle%28chosic.com%29.mp3",
+    "sha256": "7a6f9df705cd4321127b65a87d9dc7fcd8578c67357e665b338a303561eb4163",
+    "tamanho": 8577513
+   },
+   {
+    "arquivo": "Lloyd Rodgers - 01 - 1 - Fast.mp3",
+    "titulo": "1 - Fast",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Lloyd_Rodgers_-_01_-_1_-_Fast%28chosic.com%29.mp3",
+    "sha256": "6cf28cb3895cafff9480f34386d3073e2568d33be9d56ff1c43f19be259d6379",
+    "tamanho": 3013989
+   },
+   {
+    "arquivo": "Lloyd Rodgers - 03 - 3 - Fast.mp3",
+    "titulo": "3 - Fast",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Lloyd_Rodgers_-_03_-_3_-_Fast%28chosic.com%29.mp3",
+    "sha256": "01d5f090952f7df414e94b2e7bd840bf4d25ad8008ca6c3fe9d7a7a4720e4bf6",
+    "tamanho": 4808288
+   },
+   {
+    "arquivo": "Monplaisir - 01 - The Break.mp3",
+    "titulo": "The Break",
+    "url": "https://raw.githubusercontent.com/SoundSafari/CC0-1.0-Music/655388f987eacf6d08d73080fcc3e727f267bfde/chosic.com/Monplaisir_-_01_-_The_Break%28chosic.com%29.mp3",
+    "sha256": "4d144dad03af43dd2dc7bedf1cbae43312e8bd41f7304e345b68ca1e917613e9",
+    "tamanho": 6708128
+   }
+  ],
+  "fora": [
+   {
+    "arquivo": "black-box-legendary-9509.mp3",
+    "motivo": "Licença própria do Pixabay (não é CC0): fica de fora do instalador (decisão D4 do plano)."
+   }
+  ]
+ }
+}
