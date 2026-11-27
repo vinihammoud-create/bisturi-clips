@@ -67,7 +67,7 @@ jobs:
           $destino = Join-Path $env:RUNNER_TEMP 'inno7'
           Invoke-WebRequest -Uri $url -OutFile $arquivo -MaximumRedirection 5
           $achado = (Get-FileHash -Algorithm SHA256 -LiteralPath $arquivo).Hash.ToLowerInvariant()
-          if ($achado -ne $esperado) { throw "o instalador do Inno Setup tem o hash $achado, esperado $esperado: NÃO executado" }
+          if ($achado -ne $esperado) { throw "o instalador do Inno Setup tem o hash $achado, esperado ${esperado}. NÃO executado" }
           $p = Start-Process -FilePath $arquivo -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CURRENTUSER', "/DIR=$destino") -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "a instalação do Inno Setup falhou (código $($p.ExitCode))" }
           $iscc = Join-Path $destino 'ISCC.exe'
